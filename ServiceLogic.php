@@ -2,6 +2,7 @@
 
 include_once('models/PballRound_Model.php');
 include_once('models/Pcoin5Round_Model.php');
+include_once('models/Peos5Round_Model.php');
 include_once('models/PballBet_Model.php');
 
 include_once('models/ConfGame_Model.php');
@@ -18,6 +19,7 @@ class ServiceLogic
 
 	private $modelPballRound;
 	private $modelPcoin5Round;
+	private $modelPeos5Round;
 	
 	private $modelPballBet;
 
@@ -34,6 +36,7 @@ class ServiceLogic
 
 		$this->modelPballRound = new PballRound_Model($dbConn);
 		$this->modelPcoin5Round = new Pcoin5Round_Model($dbConn);
+		$this->modelPeos5Round = new Peos5Round_Model($dbConn);
 	
 		$this->modelPballBet = new PballBet_Model($dbConn);
 		
@@ -60,12 +63,13 @@ class ServiceLogic
 			$arrRoundInfo = $this->modelPballRound->getByDate($arrRound['round_no'], $arrRound['round_date']);
 		else if($gameId == GAME_COIN_5)
 			$arrRoundInfo = $this->modelPcoin5Round->getByDate($arrRound['round_no'], $arrRound['round_date']);
+		else if($gameId == GAME_EOS_5)
+			$arrRoundInfo = $this->modelPeos5Round->getByDate($arrRound['round_no'], $arrRound['round_date']);
 	
 		if(!is_null($arrRoundInfo) && $arrRoundInfo['round_state']==1){
 			$objRoundInfo = (object)$arrRoundInfo;
 
 			$arrRoundTm = getPbRoundTimes($objRoundInfo, $gameId);
-
 			
 			$arrBetData = $this->modelPballBet->getWaits($arrRoundTm, $gameId);
 			
