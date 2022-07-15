@@ -28,15 +28,15 @@
         $tRootDir = $arrConfig['dir_root'];
     }
     
-    $strDate = date( 'Y-m-d', time()+TM_OFFSET);
-	$fLog = fopen($tRootDir."/log/acc_".$strDate, "a") ;
+    $fName = date( 'Y-m-d', time());
+	$fLog = fopen($tRootDir."/log/acc_".$fName, "a") ;
 
 	sleep(1);
 
 	//로직 생성
 	$objServLogic = new ServiceLogic($dbConn);
 	//회차정산상태 
-	// $bPbAccTime = false; 
+	$bPbAccTime = true; 
 	$bPbAcc = false; 
 	$bPbBeforeAcc = false; 
 
@@ -48,20 +48,21 @@
 
 	while(true){
 
-		$tmNow = time(); //+TM_OFFSET
+		$tmNow = time(); 
 		$nHour = date("G",$tmNow);
 		$nMin = date("i",$tmNow);
 		$nSec = date("s",$tmNow);
 		
 		//로그파일 
-		if($nHour == 0 && $nMin == 0 && $nSec < 3) {
-			if($fLog)
-				fclose($fLog);
-
+		if($nHour == 0 && $nMin == 0 && $nSec < 4) {
 			$strDate = date( 'Y-m-d', $tmNow );
-			$fLog = fopen($tRootDir."/log/acc_".$strDate, "a") ;
-		
-			echo "Log File----".$strDate."\r\n";
+			if($fName !== $strDate){
+				if($fLog)
+					fclose($fLog);
+				$fName = $strDate;
+				$fLog = fopen($tRootDir."/log/acc_".$fName, "a") ;
+				echo "Log File----".$fName."\r\n";
+			}
 		}
 		
 		// $nMinSum = $nHour*60 + $nMin;
@@ -72,7 +73,7 @@
 		// 	$bPbAccTime = false;
 		// }
 		$nSecSum = ($nMin%10)*60 + $nSec;
-		/*
+		
 		//파워볼 정산
 		if($bPbAccTime && !$bPbAcc && ( (  $nSecSum>= 3 && $nSecSum<= 75) || ( $nSecSum>= 303 && $nSecSum<= 375) ) ){
 			
@@ -86,7 +87,7 @@
 			//파워볼 정산
 			$arrPbAccResult = $objServLogic->pbaccount(true, GAME_POWERBALL);
 				
-			$tmNow = time() + TM_OFFSET;
+			$tmNow = time() ;
 			$nHour = date("G",$tmNow);
 			$nMin = date("i",$tmNow);
 			$nSec = date("s",$tmNow);	
@@ -115,7 +116,7 @@
 			}
 			//echo $nHour.":".$nMin.":".$nSec."\n";
 		}
-		*/
+		
 		//EOS파워볼 정산
 		if(!$bPe5Acc && (($nSecSum>= 3 && $nSecSum<= 75) || ($nSecSum>= 303 && $nSecSum<= 375) ) ){
 			$tContent = "acc-pe5-".$nHour.":".$nMin.":".$nSec."-start\r\n";
@@ -128,7 +129,7 @@
 			//파워볼 정산
 			$arrPbAccResult = $objServLogic->pbaccount(true, GAME_EOS_5);
 				
-			$tmNow = time() + TM_OFFSET;
+			$tmNow = time();
 			$nHour = date("G",$tmNow);
 			$nMin = date("i",$tmNow);
 			$nSec = date("s",$tmNow);	
@@ -169,7 +170,7 @@
 			//파워볼 정산
 			$arrPbAccResult = $objServLogic->pbaccount(true, GAME_COIN_5);
 				
-			$tmNow = time() + TM_OFFSET;
+			$tmNow = time();
 			$nHour = date("G",$tmNow);
 			$nMin = date("i",$tmNow);
 			$nSec = date("s",$tmNow);	
@@ -199,6 +200,8 @@
 			//echo $nHour.":".$nMin.":".$nSec."\n";
 		} else if( $bAccStart && ( ($nSecSum>= 570 && $nSecSum< 600) || ($nSecSum>= 270 && $nSecSum< 300) ) ) {
 			$bAccStart = false;
+			$bPbAcc = false;
+			$bPbBeforeAcc = false;
 			$bPe5Acc = false;
 			$bPe5BeforeAcc = false;
 			$bPc5Acc = false;

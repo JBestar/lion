@@ -16,8 +16,8 @@
       //회차 시작시간설정      
       $strRoundEnd = $strNowDate." ".$nHour.":".$nMinute.":"."0";
       $tmRoundEnd = strtotime($strRoundEnd);
-      if($gameId == GAME_POWERBALL)
-        $tmRoundEnd = strtotime("-".TM_OFFSET." seconds", $tmRoundEnd);
+      // if($gameId == GAME_POWERBALL)
+      //   $tmRoundEnd = strtotime("-".TM_OFFSET." seconds", $tmRoundEnd);
       
       $arrRoundInfo['round_end'] = date("Y-m-d H:i:s", $tmRoundEnd);
       //회차 시작시간설정
@@ -32,10 +32,7 @@
      //이전회차번호, 날자 계산하는 함수-파워볼, 파워사다리
     function getPbBeforeRoundInfo($gameId){
 
-      //$tmNow = mktime('23','59','40','6','8','2021') + TM_OFFSET;
       $tmNow = time() ;
-      if($gameId == GAME_POWERBALL)
-        $tmNow += TM_OFFSET;
       
       $nYear = date("Y",$tmNow);
       $nMonth = date("m",$tmNow);
@@ -63,10 +60,9 @@
     //전전회차번호, 날자 계산하는 함수-파워볼, 파워사다리
     function getPbLastRoundInfo($gameId){
 
-      //$tmNow = mktime('23','59','40','6','8','2021') + TM_OFFSET;
       $tmNow = time() ;
-      if($gameId == GAME_POWERBALL)
-        $tmNow += TM_OFFSET;
+      // if($gameId == GAME_POWERBALL)
+      //   $tmNow += TM_OFFSET;
       
       $nYear = date("Y",$tmNow);
       $nMonth = date("m",$tmNow);
