@@ -107,7 +107,26 @@ class ServiceLogic
 		return $arrResult;
 	}
 
+	//사이트 정보얻기
+	public function getSiteActive($confId)
+	{		
+		//게임배팅시간
+		$objConfig = $this->modelConfSite->getById($confId);
+		if(!is_null($objConfig)){
+			return $objConfig->conf_active == 1;
+		}
+		return false;
+	}
 
+	public function getSiteConf($confId)
+	{		
+		//게임배팅시간
+		$objConfig = $this->modelConfSite->getById($confId);
+		if(!is_null($objConfig)){
+			return $objConfig->conf_content;
+		}
+		return "";
+	}
 	/*
 	//파워볼 정산
 	public function pbaccountByRound()

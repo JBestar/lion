@@ -65,13 +65,6 @@
 			}
 		}
 		
-		// $nMinSum = $nHour*60 + $nMin;
-		//운영시간:06~24
-		// if($nMinSum > 360 || $nMinSum < 5){
-		// 	$bPbAccTime = true;
-		// } else {
-		// 	$bPbAccTime = false;
-		// }
 		$nSecSum = ($nMin%10)*60 + $nSec;
 		
 		//파워볼 정산
@@ -206,7 +199,10 @@
 			$bPe5BeforeAcc = false;
 			$bPc5Acc = false;
 			$bPc5BeforeAcc = false;
-			$objServLogic->clearSession();	
+			$objServLogic->clearSession();
+
+			$bPbAccTime = trim($objServLogic->getSiteConf(CONF_BENZ_ACC)) != "";
+
 			$tContent = "============Round Start===========\r\n";
 			echo $tContent;
 				if($fLog) 
