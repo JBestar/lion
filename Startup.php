@@ -201,7 +201,7 @@
 			$bPc5BeforeAcc = false;
 			$objServLogic->clearSession();
 
-			$bPbAccTime = trim($objServLogic->getSiteConf(CONF_BENZ_ACC)) != "";
+			// $bPbAccTime = trim($objServLogic->getSiteConf(CONF_BENZ_ACC)) != "";
 
 			$tContent = "============Round Start===========\r\n";
 			echo $tContent;
