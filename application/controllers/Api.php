@@ -284,9 +284,7 @@ class Api extends CI_Controller {
 				$iRoundState = 0;
 				
 				if(count($arrRoundInfo)>0 && $arrRoundData['round_no'] == $arrBetData['roundno']){
-					
 					$iRoundState = calcRoundId($arrRoundInfo[0], $arrRoundData);
-
 				}
 				
 				if($iRoundState > 0){

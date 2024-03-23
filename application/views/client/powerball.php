@@ -111,7 +111,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 
 
-<script type="text/javascript" src="<?php echo base_url('assets/js/powerball.js?v=5'); ?>"></script>
+<script type="text/javascript" src="<?php echo base_url('assets/js/powerball.js?v=6'); ?>"></script>
 
 
 </body>

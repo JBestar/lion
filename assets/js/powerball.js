@@ -34,7 +34,7 @@ $(document).ready(function() {
             for (var idx in arrRoundData) {
                 tHtml += " <tr class=\"el-table__row\">";
                 tHtml += "<td><div class=\"cell\">";
-                tHtml += arrRoundData[idx].round_fid;
+                tHtml += arrRoundData[idx].round_hash;
                 tHtml += "</div></td>";
                 tHtml += "<td><div class=\"cell\">";
                 tHtml += arrRoundData[idx].round_time.substr(0, 17) + "00";
