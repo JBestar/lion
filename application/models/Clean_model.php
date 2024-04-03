@@ -21,7 +21,7 @@ class Clean_model extends CI_Model {
         $strSql = " DELETE FROM bet_powerball WHERE bet_time < '".$strDate."' ";
         $this -> db -> query($strSql);
         
-        $strSql = " DELETE FROM round_powerball WHERE round_date < '".$strDate."' ";
+        $strSql = " DELETE FROM round_pball WHERE round_date < '".$strDate."' ";
         $this -> db -> query($strSql);
 
         $strSql = " DELETE FROM board_notice WHERE notice_time_create < '".$strDate."' ";
