@@ -195,8 +195,6 @@ class Api extends CI_Controller {
 
 			//model
 			$this->load->model('pbround_model');
-			$this->load->model('pc5round_model');
-			$this->load->model('pe5round_model');
 			$this->load->model('confgame_model');
 			
 			$objConfigPb = $this->confgame_model->getByIndex($gameId);
@@ -208,19 +206,19 @@ class Api extends CI_Controller {
 				$arrRoundData = getPballRoundTimes($objConfigPb);
 				if($gameId == GAME_POWERBALL){
 					
-					$arrRound = $this->pbround_model->gets(1);
+					$arrRound = $this->pbround_model->gets($gameId, 1);
 					if(count($arrRound) > 0){	
 						calcRoundId($arrRound[0], $arrRoundData);
 					} else $arrRoundData['round_id'] = 10001;		
 				} else if($gameId == GAME_COIN_5){
 					
-					$arrRound = $this->pc5round_model->gets(1);
+					$arrRound = $this->pbround_model->gets($gameId, 1);
 					if(count($arrRound) > 0){	
 						$arrRoundData['round_id'] = $arrRound[0]->round_fid + 1;
 					} else $arrRoundData['round_id'] = 10001;	
 				} else if($gameId == GAME_EOS_5){
 					
-					$arrRound = $this->pe5round_model->gets(1);
+					$arrRound = $this->pbround_model->gets($gameId, 1);
 					if(count($arrRound) > 0){	
 						$arrRoundData['round_id'] = $arrRound[0]->round_fid + 1;
 					} else $arrRoundData['round_id'] = 10001;	
@@ -249,6 +247,7 @@ class Api extends CI_Controller {
 			$this->load->model('member_model');
 			$this->load->model('confgame_model');
 			$this->load->model('confsite_model');
+			$this->load->model('pbround_model');				
 
 			$strUid = $this->sess_model->getUserId($nLogId);			
 			$objUser = $this->member_model->getInfoByUid($strUid);
@@ -276,11 +275,10 @@ class Api extends CI_Controller {
 
 			if($gameId == GAME_POWERBALL){							//파워볼 일회차 배팅
 				$this->load->model('pbbet_model');
-				$this->load->model('pbround_model');				
 				
 				$arrRoundData = getPballRoundInfo($gameId);					//계산된 회차결과
 
-				$arrRoundInfo = $this->pbround_model->gets(1);		//등록된 회차
+				$arrRoundInfo = $this->pbround_model->gets($gameId, 1);		//등록된 회차
 				$iRoundState = 0;
 				
 				if(count($arrRoundInfo)>0 && $arrRoundData['round_no'] == $arrBetData['roundno']){
@@ -290,6 +288,7 @@ class Api extends CI_Controller {
 				if($iRoundState > 0){
 					$arrBetData['roundid'] = $arrRoundData['round_id'];
 					$arrBetData['roundno'] = $arrRoundData['round_no'] ;
+					$arrBetData['round_date'] = $arrRoundData['round_date'] ;
 					
 					$arrBetStatist = $this->pbbet_model->getBetStatist($objUser, $arrRoundData, $gameId);
 					$objConfig = $this->confgame_model->getByIndex($gameId);
@@ -310,11 +309,10 @@ class Api extends CI_Controller {
 				}
 			} else if($gameId == GAME_COIN_5) {							//코인파워볼 일회차 배팅
 				$this->load->model('pbbet_model');
-				$this->load->model('pc5round_model');				
 				
 				$arrRoundData = getPballRoundInfo($gameId);					//계산된 회차결과
 
-				$arrRoundInfo = $this->pc5round_model->gets(1);		//등록된 회차
+				$arrRoundInfo = $this->pbround_model->gets($gameId, 1);		//등록된 회차
 				$iRoundState = 0;
 				
 				if(count($arrRoundInfo)>0 && $arrRoundData['round_no'] == $arrBetData['roundno']){
@@ -327,6 +325,7 @@ class Api extends CI_Controller {
 				if($iRoundState > 0){
 					$arrBetData['roundid'] = $arrRoundData['round_id'];
 					$arrBetData['roundno'] = $arrRoundData['round_no'] ;
+					$arrBetData['round_date'] = $arrRoundData['round_date'] ;
 					
 					$arrBetStatist = $this->pbbet_model->getBetStatist($objUser, $arrRoundData, $gameId);
 					$objConfig = $this->confgame_model->getByIndex($gameId);
@@ -346,11 +345,10 @@ class Api extends CI_Controller {
 				}
 			} else if($gameId == GAME_EOS_5) {							//EOS파워볼 일회차 배팅
 				$this->load->model('pbbet_model');
-				$this->load->model('pe5round_model');				
 				
 				$arrRoundData = getPballRoundInfo($gameId);					//계산된 회차결과
 
-				$arrRoundInfo = $this->pe5round_model->gets(1);		//등록된 회차
+				$arrRoundInfo = $this->pbround_model->gets($gameId, 1);		//등록된 회차
 				$iRoundState = 0;
 				
 				if(count($arrRoundInfo)>0 && $arrRoundData['round_no'] == $arrBetData['roundno']){
@@ -363,6 +361,7 @@ class Api extends CI_Controller {
 				if($iRoundState > 0){
 					$arrBetData['roundid'] = $arrRoundData['round_id'];
 					$arrBetData['roundno'] = $arrRoundData['round_no'] ;
+					$arrBetData['round_date'] = $arrRoundData['round_date'] ;
 					
 					$arrBetStatist = $this->pbbet_model->getBetStatist($objUser, $arrRoundData, $gameId);
 					$objConfig = $this->confgame_model->getByIndex($gameId);
@@ -515,8 +514,6 @@ class Api extends CI_Controller {
 			//model
 			$this->load->model('member_model');	
 			$this->load->model('pbround_model');
-			$this->load->model('pc5round_model');	
-			$this->load->model('pe5round_model');	
 			$this->load->model('pbbet_model');	
 
 			$strUid = $this->sess_model->getUserId($nLogId);			
@@ -532,7 +529,7 @@ class Api extends CI_Controller {
 
 			if($nGameId == GAME_POWERBALL){
 				if($nRoundId > 0 && !is_null($objUser)){
-					$objRound = $this->pbround_model->getById($nRoundId);
+					$objRound = $this->pbround_model->getByHash($nGameId, $nRoundId);
 					$arrBetData = $this->pbbet_model->getByRoundId($objUser->mb_uid, $nRoundId, $nGameId);
 				}
 			} else if($nGameId == GAME_COIN_5){
@@ -545,7 +542,7 @@ class Api extends CI_Controller {
 						$strDate = date('Y-m-d', strtotime("+1 day", $tmNow));
 					}
 						
-					$objRound = $this->pc5round_model->getByNum($strDate, $nRoundId);
+					$objRound = $this->pbround_model->getByNum($nGameId, $strDate, $nRoundId);
 					$arrBetData = $this->pbbet_model->getByRoundNo($objUser->mb_uid, $strDate, $nRoundId, $nGameId);
 				}
 			} else if($nGameId == GAME_EOS_5){
@@ -558,7 +555,7 @@ class Api extends CI_Controller {
 						$strDate = date('Y-m-d', strtotime("+1 day", $tmNow));
 					}
 
-					$objRound = $this->pe5round_model->getByNum($strDate, $nRoundId);
+					$objRound = $this->pbround_model->getByNum($nGameId, $strDate, $nRoundId);
 					$arrBetData = $this->pbbet_model->getByRoundNo($objUser->mb_uid, $strDate, $nRoundId, $nGameId);
 				}
 			}
@@ -587,7 +584,8 @@ class Api extends CI_Controller {
 			$this->load->model('member_model');	
 			$this->load->model('pbround_model');	
 
-			$arrRoundData = $this->pbround_model->gets(10);
+			$gameId = GAME_POWERBALL;
+			$arrRoundData = $this->pbround_model->gets($gameId, 10);
 
 			$objResult = new StdClass;
 			$objResult->data = $arrRoundData;		
@@ -610,9 +608,10 @@ class Api extends CI_Controller {
 			
 			//model
 			$this->load->model('member_model');	
-			$this->load->model('pc5round_model');	
+			$this->load->model('pbround_model');	
 
-			$arrRoundData = $this->pc5round_model->gets(10);
+			$gameId = GAME_COIN_5;
+			$arrRoundData = $this->pbround_model->gets($gameId, 10);
 
 			$objResult = new StdClass;
 			$objResult->data = $arrRoundData;		
@@ -634,9 +633,10 @@ class Api extends CI_Controller {
 			
 			//model
 			$this->load->model('member_model');	
-			$this->load->model('pe5round_model');	
+			$this->load->model('pbround_model');	
 
-			$arrRoundData = $this->pe5round_model->gets(10);
+			$gameId = GAME_EOS_5;
+			$arrRoundData = $this->pbround_model->gets($gameId, 10);
 
 			$objResult = new StdClass;
 			$objResult->data = $arrRoundData;		

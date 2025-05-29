@@ -74,8 +74,8 @@ $active_group = 'default';
 $query_builder = TRUE;
 $hostname ="localhost";
 $username ="root";
-$password ="startend1@#$%";
-$database ="lioncomp";
+$password ="startend1@";
+$database ="lion";
 
 $db['default'] = array(
 	'dsn'	=> '',

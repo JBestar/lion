@@ -105,6 +105,7 @@ class PbBet_model extends CI_Model {
         $this->db->set('bet_mb_uid', $objUser->mb_uid);
         $this->db->set('bet_mb_name', $arrBetData['name']);
         $this->db->set('bet_round_fid', $arrBetData['roundid']);
+        $this->db->set('bet_round_date', $arrBetData['round_date']);
         $this->db->set('bet_round_no', $arrBetData['roundno']);
         $this->db->set('bet_time', 'NOW()', false);
         $this->db->set('bet_game', $arrBetData['game']);
