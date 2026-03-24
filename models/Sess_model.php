@@ -11,7 +11,7 @@ class Sess_Model {
 		$this->mDbConn = $dbConn;
 		$this->mTableName = "sess_list";
 		//세션 유지 시간
-        $this->mKeepDelay = "300"; 
+		$this->mKeepDelay = "7200"; 
 
 	}
 

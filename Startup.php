@@ -60,13 +60,15 @@
 				if($fLog)
 					fclose($fLog);
 				$fName = $strDate;
-				$fLog = fopen($tRootDir."/log/acc_".$fName, "a") ;
+					$fLog = fopen($tRootDir."/log/acc_".$fName, "a") ;
 				echo "Log File----".$fName."\r\n";
 			}
 		}
 		
 		$nSecSum = ($nMin%10)*60 + $nSec;
-		
+		if($nSec < 3) {
+			$objServLogic->clearSession();
+		}
 		//파워볼 정산
 		if($bPbAccTime && !$bPbAcc && ( (  $nSecSum>= 3 && $nSecSum<= 75) || ( $nSecSum>= 303 && $nSecSum<= 375) ) ){
 			

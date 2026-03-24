@@ -9,33 +9,16 @@ class PballRound_Model {
 	function __construct($dbConn)
 	{
 		$this->mDbConn = $dbConn;
-		$this->mTableName = "round_powerball";
+		$this->mTableName = "round_pball";
 		
 	}
 
-	public function getByFid($nRoundFid){
+    public function getByDate($nGameId, $nRoundNo, $strDate){
 
     	$strSql = "SELECT * FROM ".$this->mTableName;
-    	$strSql.= " WHERE round_fid = '".$nRoundFid."' ";
-    	
-    	$arrResult = null;
-    	if($objResult = $this->mDbConn->query($strSql)){
-	    	if ($objResult->num_rows > 0) {
-			  	while($arrRow = $objResult->fetch_assoc()) {
-			    	$arrResult = $arrRow;
-			  	}
-			}
-			$objResult->free();
-		}
-		return $arrResult;
-    }
-	
-
-    public function getByDate($nRoundNo, $strDate){
-
-    	$strSql = "SELECT * FROM ".$this->mTableName;
-    	$strSql.= " WHERE round_num = '".$nRoundNo."' ";
+    	$strSql.= " WHERE round_game = '".$nGameId."' ";
     	$strSql.= " AND round_date = '".$strDate."' ";
+    	$strSql.= " AND round_num = '".$nRoundNo."' ";
 
     	$arrResult = null;
     	if($objResult = $this->mDbConn->query($strSql)){
@@ -49,26 +32,25 @@ class PballRound_Model {
 		}
 		return $arrResult;
     }
-	
 
-	public function getLast(){
-		$strSql = "SELECT * FROM ".$this->mTableName;
-    	$strSql.= " ORDER BY round_fid DESC LIMIT 1"; 
+    public function getByFid($nGameId, $nRoundFid){
 
-    	$objResult = $this->mDbConn->query($strSql);
+    	$strSql = "SELECT * FROM ".$this->mTableName;
+    	$strSql.= " WHERE round_game = '".$nGameId."' ";
+    	$strSql.= " AND round_fid = '".$nRoundFid."' ";
 
     	$arrResult = null;
     	if($objResult = $this->mDbConn->query($strSql)){
+    	
 	    	if ($objResult->num_rows > 0) {
 			  	while($arrRow = $objResult->fetch_assoc()) {
 			    	$arrResult = $arrRow;
-		  		}
+			  	}
 			}
 			$objResult->free();
 		}
 		return $arrResult;
-	}
-
+    }
 
 
 }

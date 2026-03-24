@@ -19,10 +19,8 @@ class PballBet_Model {
     public function getWaits($objRoundInfo, $gameId){
     	$strSql = "SELECT * FROM ".$this->mTableName;
     	$strSql.= " WHERE bet_state = '1' ";
-    	$strSql.= " AND bet_round_no = '".$objRoundInfo['round_no']."' ";
-    	$strSql.= " AND bet_time >= '".$objRoundInfo['round_start']."' ";
-    	$strSql.= " AND bet_time <= '".$objRoundInfo['round_end']."' ";
         $strSql.= " AND bet_game = '".$gameId."' ";
+        $strSql.= " AND bet_round_fid = '".$objRoundInfo->round_fid."' ";
         $strSql.= " ORDER BY bet_mb_uid, bet_time ASC ";
     	$arrResult = array();
     	if($objResult = $this->mDbConn->query($strSql)){
@@ -37,6 +35,88 @@ class PballBet_Model {
 
     }
 
+    public function getWaitsByGame($gameId){
+    	$strSql = "SELECT * FROM ".$this->mTableName;
+    	$strSql.= " WHERE bet_state = '1' ";
+        $strSql.= " AND bet_game = '".$gameId."' ";
+        $strSql.= " ORDER BY bet_mb_uid, bet_time ASC ";
+    	$arrResult = array();
+    	if($objResult = $this->mDbConn->query($strSql)){
+	    	if ($objResult->num_rows > 0) {
+			  	while($arrRow = $objResult->fetch_assoc()) {
+			    	array_push($arrResult, $arrRow);
+		  		}
+			}
+			$objResult->free();
+		}
+		return $arrResult;
+    }
+
+    // 정산 디버깅용: 대기베팅이 왜 0건인지 빠르게 분해 확인
+    public function getWaitDebugStats($objRoundInfo, $objRoundTm, $gameId){
+        $arrStat = array(
+            'wait_all_game' => 0,
+            'wait_same_game' => 0,
+            'wait_same_game_fid' => 0,
+            'wait_same_game_in_window' => 0
+        );
+
+        $strSql = "SELECT COUNT(*) AS cnt FROM ".$this->mTableName;
+        $strSql.= " WHERE bet_state = '1' ";
+        $strSql.= " AND bet_round_no = '".$objRoundInfo->round_num."' ";
+        if($objResult = $this->mDbConn->query($strSql)){
+            if($objResult->num_rows > 0){
+                while($arrRow = $objResult->fetch_assoc()){
+                    $arrStat['wait_all_game'] = (int)$arrRow['cnt'];
+                }
+            }
+            $objResult->free();
+        }
+
+        $strSql = "SELECT COUNT(*) AS cnt FROM ".$this->mTableName;
+        $strSql.= " WHERE bet_state = '1' ";
+        $strSql.= " AND bet_round_no = '".$objRoundInfo->round_num."' ";
+        $strSql.= " AND bet_game = '".$gameId."' ";
+        if($objResult = $this->mDbConn->query($strSql)){
+            if($objResult->num_rows > 0){
+                while($arrRow = $objResult->fetch_assoc()){
+                    $arrStat['wait_same_game'] = (int)$arrRow['cnt'];
+                }
+            }
+            $objResult->free();
+        }
+
+        $strSql = "SELECT COUNT(*) AS cnt FROM ".$this->mTableName;
+        $strSql.= " WHERE bet_state = '1' ";
+        $strSql.= " AND bet_game = '".$gameId."' ";
+        $strSql.= " AND bet_round_fid = '".$objRoundInfo->round_fid."' ";
+        if($objResult = $this->mDbConn->query($strSql)){
+            if($objResult->num_rows > 0){
+                while($arrRow = $objResult->fetch_assoc()){
+                    $arrStat['wait_same_game_fid'] = (int)$arrRow['cnt'];
+                }
+            }
+            $objResult->free();
+        }
+
+        $strSql = "SELECT COUNT(*) AS cnt FROM ".$this->mTableName;
+        $strSql.= " WHERE bet_state = '1' ";
+        $strSql.= " AND bet_round_no = '".$objRoundInfo->round_num."' ";
+        $strSql.= " AND bet_game = '".$gameId."' ";
+        $strSql.= " AND bet_time >= '".$objRoundTm['round_start']."' ";
+        $strSql.= " AND bet_time <= '".$objRoundTm['round_end']."' ";
+        if($objResult = $this->mDbConn->query($strSql)){
+            if($objResult->num_rows > 0){
+                while($arrRow = $objResult->fetch_assoc()){
+                    $arrStat['wait_same_game_in_window'] = (int)$arrRow['cnt'];
+                }
+            }
+            $objResult->free();
+        }
+
+        return $arrStat;
+    }
+
 
 
     function updateBetRound($objRoundInfo, &$objBetInfo, &$nBeforeMoney)
@@ -46,104 +126,242 @@ class PballBet_Model {
         if($objRoundInfo->round_state == 0)
             return false;
         //bet_state=2:Betting-loss 3:Betting-Earn 
-        if($objBetInfo->bet_mode == "1" || $objBetInfo->bet_mode == "2"){
+        switch(intval($objBetInfo->bet_mode))
+        {
+            case 1:
+            case 2:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_1;
+                if($objBetInfo->bet_target == $objRoundInfo->round_result_1){
+                    $isWin = true;                            
+                }
+                break;
+            case 3:
+            case 4:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_2;
+                if($objBetInfo->bet_target == $objRoundInfo->round_result_2){
+                    $isWin = true;
+                }
+                break;
+            case 5:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
+                if($objRoundInfo->round_result_1 == 'P' && $objRoundInfo->round_result_2 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 6:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
+                if($objRoundInfo->round_result_1 == 'B' && $objRoundInfo->round_result_2 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 7:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
+                if($objRoundInfo->round_result_1 == 'P' && $objRoundInfo->round_result_2 == 'B' ){
+                    $isWin = true;
+                }
+                break;
+            case 8:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
+                if($objRoundInfo->round_result_1 == 'B' && $objRoundInfo->round_result_2 == 'B' ){
+                    $isWin = true;
+                }
+                break;
+            case 9:
+            case 10:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3;
+                if($objBetInfo->bet_target == $objRoundInfo->round_result_3){
+                    $isWin = true;
+                }
+                break;
+            case 11:
+            case 12:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_4;
+                if($objBetInfo->bet_target == $objRoundInfo->round_result_4){
+                    $isWin = true;
+                }
+                break;
+            case 13:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 14:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 15:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'B' ){
+                    $isWin = true;
+                }
+                break;
 
-            $objBetInfo->bet_result = $objRoundInfo->round_result_1;
-            if($objBetInfo->bet_target == $objRoundInfo->round_result_1){
-                $isWin = true;                            
-            }
-        } else if($objBetInfo->bet_mode == "3" || $objBetInfo->bet_mode == "4"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_2;
-            if($objBetInfo->bet_target == $objRoundInfo->round_result_2){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "5"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
-            if($objRoundInfo->round_result_1 == 'P' && $objRoundInfo->round_result_2 == 'P' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "6"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
-            if($objRoundInfo->round_result_1 == 'B' && $objRoundInfo->round_result_2 == 'P' ){
-                $isWin = true;
-            }
-        }  else if($objBetInfo->bet_mode == "7"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
-            if($objRoundInfo->round_result_1 == 'P' && $objRoundInfo->round_result_2 == 'B' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "8"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_1.$objRoundInfo->round_result_2;
-            if($objRoundInfo->round_result_1 == 'B' && $objRoundInfo->round_result_2 == 'B' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "9" || $objBetInfo->bet_mode == "10"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3;
-            if($objBetInfo->bet_target == $objRoundInfo->round_result_3){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "11" || $objBetInfo->bet_mode == "12"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_4;
-            if($objBetInfo->bet_target == $objRoundInfo->round_result_4){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "13"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
-            if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'P' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "14"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
-            if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'P' ){
-                $isWin = true;
-            }
-        }  else if($objBetInfo->bet_mode == "15"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
-            if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'B' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "16"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
-            if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'B' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "17" || $objBetInfo->bet_mode == "18" || $objBetInfo->bet_mode == "19"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_5;
-            if($objBetInfo->bet_target == $objRoundInfo->round_result_5){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "20"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
-            if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_5 == 'L' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "21"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
-            if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_5 == 'M' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "22"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
-            if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_5 == 'S' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "23"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
-            if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_5 == 'L' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "24"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
-            if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_5 == 'M' ){
-                $isWin = true;
-            }
-        } else if($objBetInfo->bet_mode == "25"){
-            $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
-            if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_5 == 'S' ){
-                $isWin = true;
-            }
+            case 16:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'B' ){
+                    $isWin = true;
+                }
+                break;
+            case 17:
+            case 18:
+            case 19:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_5;
+                if($objBetInfo->bet_target == $objRoundInfo->round_result_5){
+                    $isWin = true;
+                }
+                break;
+            case 20:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_5 == 'L' ){
+                    $isWin = true;
+                }
+                break;
+            case 21:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_5 == 'M' ){
+                    $isWin = true;
+                }
+                break;
+            case 22:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_5 == 'S' ){
+                    $isWin = true;
+                }
+                break;
+            case 23:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_5 == 'L' ){
+                    $isWin = true;
+                }
+                break;
+            case 24:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_5 == 'M' ){
+                    $isWin = true;
+                }
+                break;
+            case 25;
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_5;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_5 == 'S' ){
+                    $isWin = true;
+                }
+                break;
+            case 30:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 0){
+                    $isWin = true;
+                }
+                break;
+            case 31:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 1){
+                    $isWin = true;
+                }
+                break;
+            case 32:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 2){
+                    $isWin = true;
+                }
+                break;
+            case 33:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 3){
+                    $isWin = true;
+                }
+                break;
+            case 34:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 4){
+                    $isWin = true;
+                }
+                break;
+            case 35:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 5){
+                    $isWin = true;
+                }
+                break;
+            case 36:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 6){
+                    $isWin = true;
+                }
+                break;
+            case 37:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 7){
+                    $isWin = true;
+                }
+                break;
+            case 38:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 8){
+                    $isWin = true;
+                }
+                break;
+            case 39:
+                $objBetInfo->bet_result = intval($objRoundInfo->round_power);
+                if($objBetInfo->bet_result == 9){
+                    $isWin = true;
+                }
+                break;
+            case 41:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'P' && $objRoundInfo->round_result_1 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 42:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'P' && $objRoundInfo->round_result_1 == 'B' ){
+                    $isWin = true;
+                }
+                break;
+            case 43:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'B' && $objRoundInfo->round_result_1 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 44:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'P' && $objRoundInfo->round_result_4 == 'B' && $objRoundInfo->round_result_1 == 'B' ){
+                    $isWin = true;
+                }
+                break;
+            case 45:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'P' && $objRoundInfo->round_result_1 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 46:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'P' && $objRoundInfo->round_result_1 == 'B' ){
+                    $isWin = true;
+                }
+                break;
+            case 47:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'B' && $objRoundInfo->round_result_1 == 'P' ){
+                    $isWin = true;
+                }
+                break;
+            case 48:
+                $objBetInfo->bet_result = $objRoundInfo->round_result_3.$objRoundInfo->round_result_4.$objRoundInfo->round_result_1;
+                if($objRoundInfo->round_result_3 == 'B' && $objRoundInfo->round_result_4 == 'B' && $objRoundInfo->round_result_1 == 'B' ){
+                    $isWin = true;
+                }
+                break;
+            
+            default:
+                return false;
         }
-        else return false;
+
 
         if($nBeforeMoney < (int)$objBetInfo->bet_money){
             $nBeforeMoney = $objBetInfo->bet_before_money;
