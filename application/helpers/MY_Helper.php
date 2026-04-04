@@ -399,4 +399,27 @@
       fputs($fLog, $tContent);
       fclose($fLog);
   }
+
+  /** 로그인 요청 JSON 파싱 실패 (비밀번호 미기록) */
+  function logLoginInvalidPayload($endpointLabel, $jsonLen, $jsonErrorMsg) {
+      if (!LOG_WRITE) {
+          return;
+      }
+      writeLog($endpointLabel . " FAIL invalid_payload json_len=" . $jsonLen . " json_error=" . $jsonErrorMsg);
+  }
+
+  /**
+   * member_model->login 이 null일 때: 아이디 없음 vs 비밀번호 불일치 구분 (비밀번호 값은 기록하지 않음)
+   */
+  function logLoginCredentialFailure($endpointLabel, $member_model, $uid, $pwdLen) {
+      if (!LOG_WRITE) {
+          return;
+      }
+      $row = $member_model->getInfoByUid($uid);
+      if (is_null($row)) {
+          writeLog($endpointLabel . " FAIL auth uid=" . $uid . " pwd_len=" . $pwdLen . " reason=no_user");
+      } else {
+          writeLog($endpointLabel . " FAIL auth uid=" . $uid . " pwd_len=" . $pwdLen . " reason=password_not_match mb_level=" . $row->mb_level . " mb_state_delete=" . $row->mb_state_delete);
+      }
+  }
 ?>

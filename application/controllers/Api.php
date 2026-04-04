@@ -10,30 +10,42 @@ class Api extends CI_Controller {
 
 	//사용자 로그인
 	public function login(){ 
-		$jsonData = $_REQUEST['json_'];
-		$arrLoginData = json_decode($jsonData, true);
-		$logHead = "Api login(): ";
-		writeLog($logHead . "started.");
-		//model
+		$logHead = "Api.login ";
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$jsonLen = is_string($jsonData) ? strlen($jsonData) : 0;
+		writeLog($logHead . "start ip=" . $this->input->ip_address() . " json_len=" . $jsonLen);
+
+		$arrLoginData = is_string($jsonData) ? json_decode($jsonData, true) : null;
+		if (!is_array($arrLoginData) || !array_key_exists('username', $arrLoginData) || !array_key_exists('password', $arrLoginData)) {
+			logLoginInvalidPayload($logHead, $jsonLen, json_last_error_msg());
+			$arrResult['code'] = 2;
+			$arrResult['status'] = "fail";
+			echo json_encode($arrResult);
+			return;
+		}
+
+		$strUid = $arrLoginData['username'];
+		$strPwd = $arrLoginData['password'];
+		writeLog($logHead . "try uid=" . $strUid . " pwd_len=" . strlen((string) $strPwd));
+
 		$this->load->model('member_model');
 		$this->load->model('loghist_model');
-		
-		$objUser = $this->member_model->login($arrLoginData['username'], $arrLoginData['password']);
-		
+
+		$objUser = $this->member_model->login($strUid, $strPwd);
+
 		if(is_null($objUser)){
-			writeLog($logHead . "1 ");
+			logLoginCredentialFailure($logHead, $this->member_model, $strUid, strlen((string) $strPwd));
 			$arrResult['code'] = 2;		
 			$arrResult['status'] = "fail";
 
 		} else {
-			writeLog($logHead . "2 ");
-			writeLog($logHead . "objUser: " . json_encode($objUser));
+			writeLog($logHead . "db_match mb_uid=" . $objUser->mb_uid . " mb_level=" . $objUser->mb_level . " mb_state_delete=" . $objUser->mb_state_delete);
 			if(!$this->member_model->permittedEmployee($objUser) || $objUser->mb_level != MEMBER_EMPLOYEE_LEVEL){
+				$bPerm = $this->member_model->permittedEmployee($objUser);
+				writeLog($logHead . "FAIL policy permittedEmployee=" . ($bPerm ? '1' : '0') . " mb_level=" . $objUser->mb_level . " need_level=" . MEMBER_EMPLOYEE_LEVEL . " mb_state_delete=" . $objUser->mb_state_delete . " mb_emp_fid=" . $objUser->mb_emp_fid);
 				$arrResult['code'] = 2;
 				$arrResult['status'] = "fail";
-				writeLog($logHead . "3 ");
 			} else {
-				writeLog($logHead . "4 ");
 				$objSess = $this->sess_model->getByUid($objUser->mb_uid);
 				$bNeedLog = false;
 				$nLogId = 0;
@@ -65,6 +77,7 @@ class Api extends CI_Controller {
 					$arrResult['code'] = 4;		//1-성공 2-계정틀림 4-재가입
 				
 				}*/ else {
+					writeLog($logHead . "FAIL session ip=" . $this->input->ip_address() . " uid=" . $objUser->mb_uid . " bNeedLog=" . ($bNeedLog ? '1' : '0') . " nLogId=" . $nLogId . " (code5=다른IP세션등)");
 					$arrResult['status'] = "fail";
 					$arrResult['code'] = 5;		//1-성공 2-계정틀림 4-재가입 5-중복
 				

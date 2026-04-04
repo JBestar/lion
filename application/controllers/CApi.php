@@ -10,15 +10,28 @@ class CApi extends CI_Controller {
 
 	//사용자 로그인
 	public function login(){ 
-		$jsonData = $_REQUEST['json_'];
-		$arrLoginData = json_decode($jsonData, true);
+		$logHead = "CApi.login ";
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$jsonLen = is_string($jsonData) ? strlen($jsonData) : 0;
+		writeLog($logHead . "start ip=" . $this->input->ip_address() . " json_len=" . $jsonLen);
 
-		//model
+		$arrLoginData = is_string($jsonData) ? json_decode($jsonData, true) : null;
+		if (!is_array($arrLoginData) || !array_key_exists('username', $arrLoginData) || !array_key_exists('password', $arrLoginData)) {
+			logLoginInvalidPayload($logHead, $jsonLen, json_last_error_msg());
+			$arrResult['code'] = 2;
+			$arrResult['status'] = "fail";
+			echo json_encode($arrResult);
+			return;
+		}
+
+		$strUid = $arrLoginData['username'];
+		$strPwd = $arrLoginData['password'];
+		writeLog($logHead . "try uid=" . $strUid . " pwd_len=" . strlen((string) $strPwd));
+
 		$this->load->model('member_model');
 		$this->load->model('loghist_model');
-	
 
-		$objUser = $this->member_model->login($arrLoginData['username'], $arrLoginData['password']);
+		$objUser = $this->member_model->login($strUid, $strPwd);
 		
 		if(!is_null($objUser)){
 			if($objUser->mb_state_delete == 0 && $objUser->mb_level >= MEMBER_COMPANY_LEVEL){
@@ -38,18 +51,21 @@ class CApi extends CI_Controller {
 					 $arrResult['code'] = 1;		//1-성공 2-계정틀림 3-삭제
 					 $arrResult['data'] = $nLogId;	
 				 } else {
+					 writeLog($logHead . "FAIL sess_model->login returned<=0 uid=" . $objUser->mb_uid);
 					 $arrResult['status'] = "fail";
 					 $arrResult['code'] = 4;		//1-성공 2-계정틀림 4-재가입
 				 
 				 }
 
 			} else{
+				writeLog($logHead . "FAIL policy uid=" . $objUser->mb_uid . " mb_level=" . $objUser->mb_level . " need>=" . MEMBER_COMPANY_LEVEL . " mb_state_delete=" . $objUser->mb_state_delete);
 				$arrResult['code'] = 2;
 				$arrResult['status'] = "fail";
 			} 			
 		}
 		else
 		{
+				logLoginCredentialFailure($logHead, $this->member_model, $strUid, strlen((string) $strPwd));
 				$arrResult['code'] = 2;		
 				$arrResult['status'] = "fail";
 		}
