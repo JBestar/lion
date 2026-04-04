@@ -12,7 +12,8 @@ class Api extends CI_Controller {
 	public function login(){ 
 		$jsonData = $_REQUEST['json_'];
 		$arrLoginData = json_decode($jsonData, true);
-
+		$logHead = "Api login(): ";
+		writeLog($logHead . "started.");
 		//model
 		$this->load->model('member_model');
 		$this->load->model('loghist_model');
@@ -20,15 +21,19 @@ class Api extends CI_Controller {
 		$objUser = $this->member_model->login($arrLoginData['username'], $arrLoginData['password']);
 		
 		if(is_null($objUser)){
+			writeLog($logHead . "1 ");
 			$arrResult['code'] = 2;		
 			$arrResult['status'] = "fail";
 
 		} else {
+			writeLog($logHead . "2 ");
+			writeLog($logHead . "objUser: " . json_encode($objUser));
 			if(!$this->member_model->permittedEmployee($objUser) || $objUser->mb_level != MEMBER_EMPLOYEE_LEVEL){
 				$arrResult['code'] = 2;
 				$arrResult['status'] = "fail";
+				writeLog($logHead . "3 ");
 			} else {
-				
+				writeLog($logHead . "4 ");
 				$objSess = $this->sess_model->getByUid($objUser->mb_uid);
 				$bNeedLog = false;
 				$nLogId = 0;
@@ -529,7 +534,7 @@ class Api extends CI_Controller {
 
 			if($nGameId == GAME_POWERBALL){
 				if($nRoundId > 0 && !is_null($objUser)){
-					$objRound = $this->pbround_model->getByHash($nGameId, $nRoundId);
+					$objRound = $this->pbround_model->getById($nGameId, $nRoundId);
 					$arrBetData = $this->pbbet_model->getByRoundId($objUser->mb_uid, $nRoundId, $nGameId);
 				}
 			} else if($nGameId == GAME_COIN_5){

@@ -308,7 +308,8 @@
     function calcRoundId($objLastRound, &$arrRoundData) {
       $iResult = 0;   //0:비정상 1:정상
       if($objLastRound->round_date == $arrRoundData['round_date']){
-        $arrRoundData['round_id'] = $objLastRound->round_hash + $arrRoundData['round_no'] - $objLastRound->round_num;
+        // 화면/베팅 round_id는 외부 회차(times)와 일치하도록 round_fid 기준으로 계산한다.
+        $arrRoundData['round_id'] = $objLastRound->round_fid + $arrRoundData['round_no'] - $objLastRound->round_num;
         $iResult = 1;
         
       } else if($objLastRound->round_date < $arrRoundData['round_date']){
@@ -318,12 +319,12 @@
         
         $dtDiff = date_diff($date1, $date2);
         $nRoundDiff = $dtDiff->days*288 + $arrRoundData['round_no'] - $objLastRound->round_num;
-        $arrRoundData['round_id'] = $objLastRound->round_hash + $nRoundDiff;
+        $arrRoundData['round_id'] = $objLastRound->round_fid + $nRoundDiff;
         if($nRoundDiff > 0 && $nRoundDiff < 300)
           $iResult = 1;
         
       } else {
-        $arrRoundData['round_id'] = $objLastRound->round_hash + 1;
+        $arrRoundData['round_id'] = $objLastRound->round_fid + 1;
       }
       return $iResult;
     }

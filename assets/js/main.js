@@ -710,16 +710,16 @@ function showRoundResult(objRound, arrBetData) {
 
             tHtml += " <div class=\"el-row\"> ";
             if (element.bet_mode <= 8)
-                tHtml += "<div class=\"text-red\">";
-            else tHtml += "<div>";
-            tHtml += " <div class=\"el-col el-col-8\">";
+                tHtml += "<div class=\"bet-item-left text-red\">";
+            else tHtml += "<div class=\"bet-item-left\">";
+            tHtml += " <div class=\"bet-item-name\">";
             tHtml += getBetDetail(element.bet_mode);
-            tHtml += "</div> <div class=\"el-col el-col-6\">";
+            tHtml += "</div> <div class=\"bet-item-money\">";
             tHtml += parseInt(element.bet_money).toLocaleString();
             tHtml += "</div></div>";
-            tHtml += " <div class=\"text-red el-col el-col-6\">";
+            tHtml += " <div class=\"text-red bet-item-win\">";
             tHtml += parseInt(element.bet_win_money).toLocaleString();
-            tHtml += "</div> <div class=\"el-col el-col-4\">";
+            tHtml += "</div> <div class=\"bet-item-cancel\">";
             if(!m_btnBet.disabled && element.bet_round_no == m_objRound.round_no)
                 tHtml += "<span class='calcel-btn' onclick='cancelBet("+element.bet_fid+", this);'>취소</span>";
             tHtml += "</div></div>";
@@ -743,12 +743,14 @@ function getBuyDetailEnd(nBetSum, nWinSum) {
     var tHtml = "";
 
     tHtml += "<div class=\"sub-summary el-row\">";
-    tHtml += "<div class=\"el-col el-col-8\">소 계</div>";
-    tHtml += "<div class=\"el-col el-col-6\">";
+    tHtml += "<div class=\"bet-item-left\">";
+    tHtml += "<div class=\"bet-item-name\">소 계</div>";
+    tHtml += "<div class=\"bet-item-money\">";
     tHtml += nBetSum.toLocaleString();
-    tHtml += "</div> <div class=\"text-red el-col el-col-6\">";
-    tHtml += nWinSum.toLocaleString();
     tHtml += "</div></div>";
+    tHtml += "<div class=\"text-red bet-item-win\">";
+    tHtml += nWinSum.toLocaleString();
+    tHtml += "</div><div class=\"bet-item-cancel\"></div></div>";
 
     return tHtml;
 }

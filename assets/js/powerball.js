@@ -34,7 +34,9 @@ $(document).ready(function() {
             for (var idx in arrRoundData) {
                 tHtml += " <tr class=\"el-table__row\">";
                 tHtml += "<td><div class=\"cell\">";
-                tHtml += arrRoundData[idx].round_hash;
+                /** 회차 컬럼: round_pball.round_fid (기존 round_hash 대신) */
+                var rf = arrRoundData[idx].round_fid;
+                tHtml += (rf !== undefined && rf !== null && rf !== "") ? rf : (arrRoundData[idx].round_hash || "");
                 tHtml += "</div></td>";
                 tHtml += "<td><div class=\"cell\">";
                 tHtml += arrRoundData[idx].round_time.substr(0, 17) + "00";

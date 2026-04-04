@@ -24,12 +24,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
             <div class="main-content" style="background-color:white;">
 
                 <div class="el-row">
-                    <iframe src="http://www.powerballgame.co.kr/?view=powerballMiniView" allowtransparency="true" frameborder="0" scrolling="no" style="width: 830px; height: 273px;">
+                    <?php
+                    /** pbg 미니뷰: openMini=1 시 pbg 쪽에서 추첨 패널 펼침( powerballMiniView.php PB_OPEN_MINI_EMBED ) · 높이는 펼친 상태(400px)에 맞춤 */
+                    $pbgMiniSrc = 'https://pbg-2.com/?view=powerballMiniView&openMini=1';
+                    ?>
+                    <iframe id="lion-pbg-mini-iframe" src="<?= htmlspecialchars($pbgMiniSrc, ENT_QUOTES, 'UTF-8') ?>" allowtransparency="true" frameborder="0" scrolling="no" style="width: 830px; height: 273px; border: 0; vertical-align: top;">
                     </iframe>
                     <div class="el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--mini" style="width: 830px; height: 55vh;">
                         
                         <div class="el-table__body-wrapper is-scrolling-none" style="height: 459px;">
-                            <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 760px;">
+                            <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 830px;">
                                 <colgroup>
                                     <col name="el-table_1_column_1" width="80"><col name="el-table_1_column_2" width="150">
                                     <col name="el-table_1_column_3" width="60"><col name="el-table_1_column_4" width="100">
@@ -111,7 +115,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 
 
-<script type="text/javascript" src="<?php echo base_url('assets/js/powerball.js?v=6'); ?>"></script>
+<script type="text/javascript" src="<?php echo base_url('assets/js/powerball.js?v=7'); ?>"></script>
 
 
 </body>

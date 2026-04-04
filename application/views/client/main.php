@@ -120,7 +120,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     </div>
                     <!--Bet Panel-->
                     <div class="content el-row" style="padding-bottom:20px;">
-                        <div class="el-col el-col-18">
+                        <div class="el-col el-col-17">
                             
                             <div class="el-row ">
                                 <div class="el-col el-col-10">
@@ -670,7 +670,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                         </div>
 
 
-                        <div class="el-col el-col-6" style="padding-left: 10px;">
+                        <div class="el-col el-col-7" style="padding-left: 10px;">
                             <div class="buy-contianer el-row">
                                 <div class="buy-info el-col el-col-24">
                                     <div class="issue-no el-row">

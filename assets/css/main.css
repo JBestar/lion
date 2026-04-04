@@ -684,6 +684,41 @@ body {
     overflow-y: auto;
 }
 
+.buy-detail .el-row {
+    width: 100%;
+}
+
+.buy-detail .bet-item-left {
+    float: left;
+    width: 58%;
+    display: flex;
+}
+
+.buy-detail .bet-item-name {
+    width: 72%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.buy-detail .bet-item-money {
+    width: 28%;
+    text-align: right;
+}
+
+.buy-detail .bet-item-win {
+    float: left;
+    width: 24%;
+    text-align: right;
+}
+
+.buy-detail .bet-item-cancel {
+    float: left;
+    width: 18%;
+    text-align: right;
+    white-space: nowrap;
+}
+
 
 /*=======Dialog========*/
 
