@@ -9,6 +9,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
    
     <link rel="stylesheet" href="<?php echo base_url('assets/css/all.css');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=2');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/index_new.css?v=1');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=2');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/default.css?v=1');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/layout.css?v=1');?>">
     <!-- <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=').time();?>"> -->
     
     <script src="<?php echo base_url('assets/jslib/jquery-1.12.4.min.js'); ?>"></script>
@@ -27,45 +31,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <div class="main-container">
         <div class="main-container-wrap">
             <div class="main-content">
-                <div class="v-list" >
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id1"></button>
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id2"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id3"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id4"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id5"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id6"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id7"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id8"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id9"></button>                        
-                    </div>
-                    <div class="pt-2 v-list-item">
-                        <button class="el-button name-btn" id="user-name-id10"></button>                        
-                    </div>
-
-                </div>
-                    
-                <div class="el-col el-col-2">
-                    <div>&nbsp;</div>
-                </div>
-
-                <div class="el-col el-col-22">
+                <div class="el-col el-col-24">
                     <marquee id="message-marquee-id" class="marquee"></marquee>
                     <!--Header-->
                     <div class="header el-row">
@@ -120,8 +86,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     </div>
                     <!--Bet Panel-->
                     <div class="content el-row" style="padding-bottom:20px;">
-                        <div class="el-col el-col-17">
-                            
+                        <div class="el-col el-col-24">
+                    <div class="px-5 senior-bet-layout">
                             <div class="el-row ">
                                 <div class="el-col el-col-10">
                                     <button class="game-button select" id="bet-pbg-id" onclick="selectGame(0);">PBG파워볼</button> 
@@ -133,627 +99,85 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                 </div>
                             </div>
 
-                            <div class="el-row">
-                                <!--Powerball-->
-                                <div class="pa-2 redball el-col el-col-12">
-                                    <span class="white--text font-weight-bold" >파워볼</span>
-                                    <div class="bet-area py-2 px-2">
-                                        <!--파워볼 홀짝-->
-                                        <div class="el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="1" class="white--text pa-4 rounded-l-pill v-card v-card-1 light-blue-darken-3">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span class="display-3">홀</span> 
-                                                        <span id="bet-ratio-1-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="2" class="white--text pa-4 rounded-r-pill v-card v-card-2 red-darken-1">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span id="bet-ratio-2-id" class="display-1"></span> 
-                                                        <span class="display-3">짝</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!--파워볼 언오버-->
-                                        <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="3" class="white--text pa-4 rounded-l-pill v-card v-card-1 light-blue-darken-3">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span >
-                                                            <span class="display-3">언더</span>
-                                                            <span>(0-4)</span>
-                                                        </span> 
-                                                        <span id="bet-ratio-3-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="4" class="white--text pa-4 rounded-r-pill v-card v-card-2 red-darken-1">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span  id="bet-ratio-4-id" class="display-1"></span> 
-                                                        <span >
-                                                            <span >(5-9)</span>
-                                                            <span class="display-3">오버</span>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!--파워볼조합-->
-                                        <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="5" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span class="display-3">홀+언더</span>
-                                                        <span id="bet-ratio-5-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="6" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span id="bet-ratio-6-id" class="display-1"></span> 
-                                                        <span class="display-3">짝+언더</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="7" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span class="display-3">홀+오버</span>
-                                                        <span id="bet-ratio-7-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="8" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span id="bet-ratio-8-id" class="display-1"></span> 
-                                                        <span class="display-3">짝+오버</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                    <div class="flex flex-wrap gap-5 senior-bet-columns">
+                    <aside class="senior-left md:block" style="width:530px;flex-shrink:0;">
+                        <div class="mb-5">
+                            <div class="sub_title relative">
+                                <div class="pb-2 border_b">
+                                    <font class="spanBoderWhite" color="red" id="senior-game-label">PBG파워볼</font>
+                                    <span id="old_round">—</span>
                                 </div>
-                                <!--Normalball-->
-                                <div class="pa-2 blueball el-col el-col-12">
-                                    <span class="white--text font-weight-bold">일반볼</span> 
-                                    <div class="bet-area py-2 px-2">
-
-                                        <div class="el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="9" class="white--text pa-4 rounded-l-pill v-card v-card-1 light-blue-darken-3">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span class="display-3">홀</span>
-                                                        <span id="bet-ratio-9-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="10" class="white--text pa-4 rounded-r-pill v-card v-card-2 red-darken-1">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span id="bet-ratio-10-id" class="display-1"></span> 
-                                                        <span class="display-3">짝</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="11" class="white--text pa-4  rounded-l-pill v-card v-card-1 light-blue-darken-3">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span>
-                                                            <span class="display-3">언더</span>
-                                                            <span >(15-72)</span>
-                                                        </span> 
-                                                        <span id="bet-ratio-11-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="12" class="white--text pa-4 rounded-r-pill v-card v-card-2 red-darken-1">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span id="bet-ratio-12-id" class="display-1"></span> 
-                                                        <span>
-                                                            <span >(73-130)</span>
-                                                            <span class="display-3">오버</span>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                
-                                        <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="13" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span class="display-3">홀+언더</span>
-                                                        <span id="bet-ratio-13-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="14" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span id="bet-ratio-14-id" class="display-1"></span> 
-                                                        <span class="display-3">짝+언더</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                
-                                        <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="15" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span class="display-3">홀+오버</span>
-                                                        <span id="bet-ratio-15-id" class="display-1"></span>
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="el-col el-col-12" style="padding-left: 5px; padding-right: 5px;">
-                                                <div index="16" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                    <div class="d-flex justify-space-between">
-                                                        <span id="bet-ratio-16-id" class="display-1"></span> 
-                                                        <span class="display-3">짝+오버</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!--==========Chip Panel=============-->
-                            <div class="chip my-1 el-row">
-                                <div  class="el-col el-col-3">
-                                    <div  class="el-image chips" onclick="selectMoney(10000);">
-                                        <img src="/assets/image/1.png" class="el-image__inner">
-                                        
-                                    </div>
-                                </div> 
-                                <div  class="el-col el-col-3">
-                                    <div  class="el-image chips" onclick="selectMoney(30000);">
-                                        <img src="/assets/image/3.png" class="el-image__inner">
-                                    </div>
-                                </div> 
-                                <div  class="el-col el-col-3">
-                                    <div  class="el-image chips" onclick="selectMoney(50000);">
-                                        <img src="/assets/image/5.png" class="el-image__inner">
-                                    </div>
-                                </div> 
-                                <div  class="el-col el-col-3">
-                                    <button id="bet-btn-id" type="button" class="el-button chips btn el-button--default" onclick="doBet();">
-                                        <span>배  팅</span>
-                                    </button>
-                                </div> 
-                                <div  class="el-col el-col-3">
-                                    <button class="el-button chips btn el-button--default" onclick="initBet();" style="padding:12px 0px;">
-                                        <span>배팅취소</span>
-                                    </button>
-                                </div>
-                                <div  class="el-col el-col-3">
-                                    <div  class="el-image chips" onclick="selectMoney(100000);">
-                                        <img src="/assets/image/10.png" class="el-image__inner">
-                                    </div>
-                                </div> 
-                                <div  class="el-col el-col-3">
-                                    <div  class="el-image chips" onclick="selectMoney(300000);">
-                                        <img src="/assets/image/30.png" class="el-image__inner">
-                                    </div>
-                                </div> 
-                                <div  class="el-col el-col-3">
-                                    <div  class="el-image chips" onclick="selectMoney(500000);">
-                                        <img src="/assets/image/50.png" class="el-image__inner">
-                                    </div>
-                                </div>
-                            </div>
-
-
-                            <!--==========Normal+Power=============-->
-                            <div class="el-row">
-                                <span class="white--text font-weight-bold">일반볼조합 + 파워볼</span> 
-                                <div class="bet-area pa-2 el-col el-col-24">
-                                    <div class="el-row" style="margin-left: -5px; margin-right: -5px;">
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="41" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-2">홀+언더+파홀</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-41-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="42" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                <div class="d-flex justify-space-between">
-                                                    <span id="bet-ratio-42-id" class="display-1"></span>
-                                                    <span>
-                                                        <span class="display-2">홀+언더+파짝</span>
-                                                        <span></span>
-                                                    </span> 
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="43" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-2">홀+오버+파홀</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-43-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="44" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                <div class="d-flex justify-space-between">
-                                                    <span id="bet-ratio-44-id" class="display-1"></span>
-                                                    <span><span class="display-2">홀+오버+파짝</span>
-                                                        <span></span>
-                                                    </span> 
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div> 
-                                    <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="45" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-2">짝+언더+파홀</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-45-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="46" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                <div class="d-flex justify-space-between">
-                                                    <span id="bet-ratio-46-id" class="display-1"></span>
-                                                    <span>
-                                                        <span class="display-2">짝+언더+파짝</span>
-                                                        <span></span>
-                                                    </span> 
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="47" class="white--text pa-4 rounded-l-pill v-card v-card-3 teal-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-2">짝+오버+파홀</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-47-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="el-col el-col-6" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="48" class="white--text pa-4 rounded-r-pill v-card v-card-4 red-darken-4">
-                                                <div class="d-flex justify-space-between">
-                                                    <span id="bet-ratio-48-id" class="display-1"></span>
-                                                    <span><span class="display-2">짝+오버+파짝</span>
-                                                        <span></span>
-                                                    </span> 
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div> 
-                                </div>
-                            </div>
-
-                            <!--==========Large-Normal-Small=============-->
-                            <div class="el-row">
-                                <span class="white--text font-weight-bold">일반볼합 대중소</span> 
-                                <div class="bet-area pa-2 el-col el-col-24">
-                                    <div class="el-row" style="margin-left: -5px; margin-right: -5px;">
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="17" class="white--text pa-4 rounded-l-pill v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">대</span>
-                                                        <span>(81-130)</span>
-                                                    </span> 
-                                                    <span id="bet-ratio-17-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="18" class="white--text pa-4 v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">중</span>
-                                                        <span>(65-80)</span>
-                                                    </span> 
-                                                    <span id="bet-ratio-18-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="19" class="white--text pa-4 rounded-r-pill v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span><span class="display-3">소</span><span>(15-64)</span></span> 
-                                                    <span id="bet-ratio-19-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div> 
- 
-                                    <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="20" class="white--text pa-4 rounded-l-pill v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span><span class="display-3">홀+대</span><span>(81-130)</span></span> 
-                                                    <span id="bet-ratio-20-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="21" class="white--text pa-4 btn8111 v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span><span class="display-3">홀+중</span><span>(65-80)</span></span> 
-                                                    <span id="bet-ratio-21-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="22" class="white--text pa-4 rounded-r-pill v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span><span class="display-3">홀+소</span><span>(15-64)</span></span> 
-                                                    <span id="bet-ratio-22-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div> 
-                                    <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="23" class="white--text pa-4 rounded-l-pill v-card v-card-7 purple-darken-3">
-                                                <div class="d-flex justify-space-between"><span>
-                                                    <span class="display-3">짝+대</span><span>(81-130)</span></span> 
-                                                    <span id="bet-ratio-23-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="24" class="white--text pa-4 v-card v-card-7 purple-darken-3">
-                                                <div class="d-flex justify-space-between"><span>
-                                                    <span class="display-3">짝+중</span><span>(65-80)</span></span> 
-                                                    <span id="bet-ratio-24-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-8" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="25" class="white--text pa-4 rounded-r-pill v-card v-card-7 purple-darken-3">
-                                                <div class="d-flex justify-space-between">
-                                                    <span><span class="display-3">짝+소</span><span>(15-64)</span></span> 
-                                                    <span id="bet-ratio-25-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                            
-                            <!--==========Number=============-->
-                            <div class="el-row">
-                                <span class="white--text font-weight-bold">숫자맞추기</span> 
-                                <div class="bet-area pa-2 el-col el-col-24">
-                                    <div class="el-row" style="margin-left: -5px; margin-right: -5px;">
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="30" class="white--text pa-4 rounded-l-pill v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">0</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-30-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="31" class="white--text pa-4 v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">1</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-31-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="32" class="white--text pa-4 v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">2</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-32-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="33" class="white--text pa-4 v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">3</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-33-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="34" class="white--text pa-4 rounded-r-pill v-card v-card-5 cyan-darken-1">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">4</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-34-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-
-                                    </div>
-                                    <div class="pt-2 el-row" style="margin-left: -5px; margin-right: -5px;">
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="35" class="white--text pa-4 rounded-l-pill v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">5</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-35-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="36" class="white--text pa-4 v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">6</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-36-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="37" class="white--text pa-4 v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">7</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-37-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="38" class="white--text pa-4 v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">8</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-38-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div> 
-                                        <div class="el-col el-col-5" style="padding-left: 5px; padding-right: 5px;">
-                                            <div index="39" class="white--text pa-4 rounded-r-pill v-card v-card-6 green-darken-2">
-                                                <div class="d-flex justify-space-between">
-                                                    <span>
-                                                        <span class="display-3">9</span>
-                                                        <span></span>
-                                                    </span> 
-                                                    <span id="bet-ratio-39-id" class="display-1"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <button type="button" class="btn btn_red absolute right-2 top-2 text-sm" onclick="javascript: openScreen();">결과보기</button>
+                                <div class="mt-2 flex justify-center">
+                                    파워볼
+                                    <div data-v-d64cd776="" class="justify-center flex gap-1 mx-2" id="old_result_p"></div>
+                                    일반볼
+                                    <div data-v-7f6779bf="" class="justify-center flex gap-1 mx-2" id="old_result_n"></div>
                                 </div>
                             </div>
                         </div>
-
-
-                        <div class="el-col el-col-7" style="padding-left: 10px;">
-                            <div class="buy-contianer el-row">
-                                <div class="buy-info el-col el-col-24">
-                                    <div class="issue-no el-row">
-                                        <i class="fas fa-chevron-left" id="buy-info-prev-id" style="cursor: pointer;"></i>
-                                        <span name="0" id="buy-info-round-id">0</span> 회차
-                                        <i class="fas fa-chevron-right" id="buy-info-next-id" style="cursor: pointer;"></i>
-                                        
-                                    </div> 
-                                    <div class="lottery-result el-row" id="lottery-result-id" style="display:none;">
-                                        <button type="button" class="el-button result el-button--primary is-circle">
-                                            <span id="result-normal-sum-id"></span>
-                                        </button> 
-                                        <button type="button" class="el-button result el-button--primary is-circle">
-                                            <span id="result-normal-parity-id"></span>
-                                        </button> 
-                                        <button type="button" class="el-button result el-button--primary is-circle">
-                                            <span><i id="result-normal-arrow-id" class="fas fa-arrow-up"></i></span>
-                                        </button> 
-                                        <button type="button"  id="result-normal-size-id" class="el-button result is-circle" style="background: rgb(255, 193, 7); color:white; border:none;">
-                                            <span></span>
-                                        </button> 
-                                        <div class="el-image" style="height: 4vh; width: 12px; vertical-align: middle;">
-                                            <img src="/assets/image/pow.png" class="el-image__inner">
-                                        </div> 
-                                        <button type="button" class="el-button result el-button--danger is-circle">
-                                            <span id="result-power-parity-id"></span>
-                                        </button> 
-                                        <button type="button" class="el-button result el-button--danger is-circle">
-                                            <span><i id="result-power-arrow-id" class="fas fa-arrow-down"></i></span>
-                                        </button>
-                                    </div> 
-                                    <div class="buy-summary el-row">
-                                        <div class="el-col el-col-8">배팅결과</div> 
-                                        <div class="el-col el-col-6" id="buy-summary-bet-id">0</div>
-                                        <div class="el-col el-col-6" id="buy-summary-win-id">0</div>
-                                    </div> 
-                                    <div class="buy-detail el-row" id="buy-detail-id" style="height: 734px; display:block;" >
-                                        <!--
-                                        <div class="el-row">
-                                            <p class="text-yellow clickable">김사장</p> 
-                                            <div class="el-row">
-                                                <div class="text-red">
-                                                    <div class="el-col el-col-8">파워볼홀</div>
-                                                    <div class="el-col el-col-8">10000</div>
-                                                </div> 
-                                                <div class="text-red el-col el-col-8">19300</div>
-                                            </div> 
-                                            <div class="el-row">
-                                                <div>
-                                                    <div class="el-col el-col-8">언더</div>
-                                                    <div class="el-col el-col-8">10000</div>
-                                                </div> 
-                                                <div class="text-red el-col el-col-8">0</div>
-                                            </div> 
-                                            <div class="sub-summary el-row">
-                                                <div class="el-col el-col-8">소 계</div> 
-                                                <div class="el-col el-col-8">10000</div>
-                                                <div class="text-red el-col el-col-8">19300</div>
-                                            </div>
-                                        </div>
-                                        
-
-                                        -->
-                                    </div>
-                                </div> 
-                                <!--
-                                <div class="el-dialog__wrapper" style="display: none;">
-                                    <div role="dialog" class="el-dialog" style="margin-top: 5vh; width: 60%;">
-                                        <div class="el-dialog__header">
-                                            <span class="el-dialog__title">구매취소</span>
-                                            <button type="button" aria-label="Close" class="el-dialog__headerbtn">
-                                                <i class="el-dialog__close el-icon el-icon-close"></i>
-                                            </button>
-                                        </div>
-                                    </div>
+                        <div class="bet_list">
+                            <div class="sub_title senior-bet-list-head relative">
+                                배팅리스트
+                                <br>
+                                <span style="font-size:12px;opacity:.85;">배팅회차 클릭시 현재회차 내역을 확인하실수 있습니다.</span>
+                                <div class="absolute right-2 top-2 flex">
+                                    <button type="button" class="btn btn_red text-sm" onclick="showBetHistoryDlg();">베팅내역</button>
                                 </div>
-                                -->
+                                <div data-v-7d0e9f73="" class="bet_list_scroll">
+                                    <table class="senior-bet-table-head" border="0" cellspacing="0" cellpadding="0" width="100%">
+                                        <tbody>
+                                        <tr>
+                                            <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:18%">회차</td>
+                                            <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:34%">선택</td>
+                                            <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:18%">배팅금</td>
+                                            <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:18%">당첨금</td>
+                                            <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:12%">결과</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="5">
+                                                <div class="gameScroll" style="height:530px;overflow:auto;font-size:12px;">
+                                                    <table id="bet_list" border="0" cellspacing="0" cellpadding="0" align="center" width="100%">
+                                                        <tbody id="client-bet-list-tbody"></tbody>
+                                                    </table>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    
+                    </aside>
+                    <div class="flex-1 min-w-0 senior-right relative">
 
+                            <div id="betLockMain" style="z-index: 99997; border-radius: 10px; position: absolute; width: 100%; height: 100%; background-color: rgb(0, 0, 0); opacity: 0.6; text-align: center; margin: 0px auto; display: none;"></div>
+                            <div id="betLockText" style="z-index: 99999; position: absolute; width: 100%; height: 100%; line-height: 750px; border: 0px; color: rgb(255, 255, 255); font-weight: bold; text-align: center; margin: 0px auto; font-size: 50px; display: none;"></div>
 
+                            <?php include __DIR__ . '/partials/senior_betting_panel.php'; ?>
 
+                    </div>
+                    </div>
+                    </div>
+                        </div>
+
+                    </div>
+                    <!-- 회차·당회 배팅요약 DOM (main.js 동기화용, 화면 비표시) -->
+                    <div style="display:none" aria-hidden="true">
+                        <button type="button" id="buy-info-prev-id"></button>
+                        <button type="button" id="buy-info-next-id"></button>
+                        <span id="buy-info-round-id" name="0">0</span>
+                        <div id="lottery-result-id">
+                            <span id="result-normal-sum-id"></span>
+                            <span id="result-normal-parity-id"></span>
+                            <i id="result-normal-arrow-id"></i>
+                            <button type="button" id="result-normal-size-id"><span></span></button>
+                            <span id="result-power-parity-id"></span>
+                            <i id="result-power-arrow-id"></i>
+                        </div>
+                        <span id="buy-summary-bet-id">0</span>
+                        <span id="buy-summary-win-id">0</span>
+                        <div id="buy-detail-id"></div>
                     </div>
 
                 </div>
@@ -796,16 +220,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                                         <option value="1">코인</option>
                                                         <option value="2">EOS</option>
                                                     </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div> 
-                                    <div class="el-col el-col-4">
-                                        <div class="el-form-item el-form-item--small">
-                                            <label class="el-form-item__label" style="width: 70px;">배팅자</label>
-                                            <div class="el-form-item__content" style="margin-left: 70px;">
-                                                <div class="el-input el-input--small">
-                                                    <input type="text" id="el-dialog-bethistory-user-id" autocomplete="off" class="el-input__inner">
                                                 </div>
                                             </div>
                                         </div>

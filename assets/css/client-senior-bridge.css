@@ -1,0 +1,64 @@
+/* main.css Material .green / .red / .orange use !important background — overrides Vue-scoped text colors */
+
+/* .main-container { color: rgba(0,0,0,.87) } inherits into senior-left on dark .main-content — force light UI copy */
+.senior-left {
+    color: #fff;
+}
+
+/* .sub_title / !bg-black do not set color; otherwise inherits .main-container (dark text on black bar) */
+.senior-right .bet_box #roundStatusText.sub_title {
+    color: #fff;
+}
+
+.senior-right .bet_box #betTitle {
+    color: #fff;
+}
+
+.senior-right .betRound_box .sub_title2 {
+    color: #fff;
+}
+
+.senior-right .betRound_box .table_list thead th {
+    color: #fff;
+}
+
+.senior-right .card[data-v-1f51d655] {
+    color: #fff;
+}
+
+.senior-right .green[data-v-1f51d655] {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: #45be40 !important;
+}
+
+.senior-right .yellow[data-v-1f51d655] {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: #feb81d !important;
+}
+
+.senior-right .red[data-v-ef6a603f],
+.senior-right .blue[data-v-ef6a603f],
+.senior-right .yellow[data-v-ef6a603f] {
+    background-color: transparent !important;
+    border-color: transparent !important;
+}
+
+.senior-right .red[data-v-ef6a603f] {
+    color: #d62929 !important;
+}
+
+.senior-right .blue[data-v-ef6a603f] {
+    color: #327bdf !important;
+}
+
+.senior-right .yellow[data-v-ef6a603f] {
+    color: #ecbd3f !important;
+}
+
+.senior-right font[data-v-ef6a603f].blue,
+.senior-right font[data-v-ef6a603f].red {
+    background-color: transparent !important;
+    border-color: transparent !important;
+}

@@ -521,6 +521,36 @@ class Api extends CI_Controller {
 		}
 	}
 
+	public function pbrecentbets(){
+		$jsonData = $_REQUEST['json_'];
+		$arrReqData = json_decode($jsonData, true);
+
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
+		{
+			$this->load->model('member_model');
+			$this->load->model('pbbet_model');
+
+			$strUid = $this->sess_model->getUserId($nLogId);
+			$nGameId = isset($arrReqData['game']) ? intval($arrReqData['game']) : -1;
+			$nLimit = isset($arrReqData['limit']) ? intval($arrReqData['limit']) : 50;
+			if ($nLimit < 1 || $nLimit > 200) {
+				$nLimit = 50;
+			}
+
+			$arrBets = $this->pbbet_model->getByUserId($strUid, $nLimit, $nGameId);
+
+			$objResult = new StdClass;
+			$objResult->bets = $arrBets;
+			$objResult->status = "success";
+
+			echo json_encode($objResult);
+		} else {
+			$arrResult['status'] = "logout";
+			echo json_encode($arrResult);
+		}
+	}
+
 	public function pbroundresult(){
 		$jsonData = $_REQUEST['json_'];
 		$arrReqData = json_decode($jsonData, true);

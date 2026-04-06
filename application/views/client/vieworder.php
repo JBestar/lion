@@ -77,7 +77,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 
 
-<script type="text/javascript" src="<?php echo base_url('assets/js/vieworder.js?v=2'); ?>"></script>
+<script type="text/javascript" src="<?php echo base_url('assets/js/vieworder.js?v=3'); ?>"></script>
 
 
 </body>

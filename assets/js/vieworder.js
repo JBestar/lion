@@ -125,23 +125,8 @@ function showRoundResult(objRound, arrBetData) {
     var nWinSum = 0;
 
     if (arrBetData != null && arrBetData.length > 0) {
-        var tName = "";
 
         for (var idx in arrBetData) {
-            if (tName != arrBetData[idx].bet_mb_name) {
-                if (tName.length > 0) {
-                    tHtml += getBuyDetailEnd(nBetSum, nWinSum);
-                }
-                nAllBet += nBetSum;
-                nAllWin += nWinSum;
-                nBetSum = 0;
-                nWinSum = 0;
-                tName = arrBetData[idx].bet_mb_name;
-
-                tHtml += "<div class=\"el-row\">";
-                tHtml += "<p class=\"text-yellow clickable\">";
-                tHtml += tName + "</p>";
-            }
 
             tHtml += " <div class=\"el-row\"> ";
             if (arrBetData[idx].bet_mode <= 8)

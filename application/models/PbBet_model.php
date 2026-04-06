@@ -34,7 +34,7 @@ class PbBet_model extends CI_Model {
     }
 
     function getByRoundId($strUserId, $nRoundFid, $nGameId = -1){       
-        $strSql = "SELECT bet_fid, bet_state, bet_mb_uid, bet_mb_name, bet_round_fid, bet_round_no, bet_game, bet_time, bet_mode, bet_target, bet_money, bet_win_money  FROM ".$this->mTableName;
+        $strSql = "SELECT bet_fid, bet_state, bet_mb_uid, bet_mb_name, bet_round_fid, bet_round_no, bet_game, bet_time, bet_mode, bet_target, bet_ratio, bet_money, bet_win_money  FROM ".$this->mTableName;
         $strSql .=" WHERE bet_round_fid='".$nRoundFid."' AND bet_mb_uid='".$strUserId."' AND bet_state != ".BET_CANCEL;
         if($nGameId >= 0)
             $strSql .=" AND bet_game = '".$nGameId."' ";
@@ -48,7 +48,7 @@ class PbBet_model extends CI_Model {
     }
 
     function getByRoundNo($strUserId, $strDate, $nRoundNo, $nGameId = -1){       
-        $strSql = "SELECT bet_fid, bet_state, bet_mb_uid, bet_mb_name, bet_round_fid, bet_round_no, bet_time, bet_game, bet_mode, bet_target, bet_money, bet_win_money  FROM ".$this->mTableName;
+        $strSql = "SELECT bet_fid, bet_state, bet_mb_uid, bet_mb_name, bet_round_fid, bet_round_no, bet_time, bet_game, bet_mode, bet_target, bet_ratio, bet_money, bet_win_money  FROM ".$this->mTableName;
         $strSql .=" WHERE bet_time >'".$strDate."' AND bet_round_no='".$nRoundNo."' AND bet_mb_uid='".$strUserId."' AND bet_state != ".BET_CANCEL;
         if($nGameId >= 0)
             $strSql .=" AND bet_game = '".$nGameId."' ";
@@ -75,7 +75,7 @@ class PbBet_model extends CI_Model {
     function getByUserId($strUserId, $nCount, $nGameId = -1)
     {
         
-        $strSql = "SELECT bet_fid, bet_state, bet_round_fid, bet_round_no, bet_time, bet_game, bet_mode, bet_target, bet_money, bet_win_money  FROM ".$this->mTableName;
+        $strSql = "SELECT bet_fid, bet_state, bet_round_fid, bet_round_no, bet_time, bet_game, bet_mode, bet_target, bet_ratio, bet_money, bet_win_money  FROM ".$this->mTableName;
         $strSql .=" WHERE bet_mb_uid='".$strUserId."' AND bet_state !=".BET_CANCEL;
         if($nGameId >= 0)
             $strSql .=" AND bet_game = '".$nGameId."' ";
@@ -155,8 +155,8 @@ class PbBet_model extends CI_Model {
         if(array_key_exists('game', $arrReqData) && intval($arrReqData['game']) >= 0) {
             $strSql.=" AND bet_game = '".$arrReqData['game']."' ";
         }
-        if(strlen($arrReqData['mb_name']) > 0) {
-            $strSql.=" AND bet_mb_name = '".$arrReqData['mb_name']."' ";
+        if(array_key_exists('mb_name', $arrReqData) && strlen($arrReqData['mb_name']) > 0) {
+            $strSql.=" AND bet_mb_name = '".$this->db->escape_str($arrReqData['mb_name'])."' ";
         }
         if(strlen($arrReqData['round_fid']) > 0) {
 
