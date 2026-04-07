@@ -10,7 +10,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <link rel="stylesheet" href="<?php echo base_url('assets/css/all.css');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=2');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/index_new.css?v=1');?>">
-    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=2');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=5');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/default.css?v=1');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/layout.css?v=1');?>">
     <!-- <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=').time();?>"> -->
@@ -56,17 +56,26 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                             </ul>
                             <div class="pt-1 el-row">
                                 
-                                <div class="el-col el-col-4">
-                                    <p id="bet-time-id" class="time">00:00</p>
+                                <div class="el-col el-col-14">
+                                    <div data-v-e74cd2d0="" class="pbg_info flex flex-wrap justify-center gap-1 lg:gap-5">
+                                        <div data-v-e74cd2d0="" class="">
+                                            <span id="hours">00</span><span class="pbg-clock-sep">:</span><span id="min">00</span><span class="pbg-clock-sep">:</span><span id="sec">00</span>
+                                        </div>
+                                        <div data-v-e74cd2d0="">
+                                            진행회차 &nbsp;&nbsp;
+                                            <span id="cur_round" class="text-yellow-300 font-bold">—</span>
+                                            [<span style="font-size:18px;" id="betcloserest">00:00</span>]
+                                        </div>
+                                    </div>
                                 </div> 
-                                <div class="px-2 el-col el-col-8">
+                                <div class="px-2 el-col el-col-5">
                                     <div class="bet-customer pt-2">
                                         <span id="bet-name-id"></span> 
                                         <span value="0" id="bet-card-id"></span> 
                                         <span value="0" id="bet-money-id"></span>
                                     </div>
                                 </div> 
-                                <div class="el-col el-col-12">
+                                <div class="el-col el-col-5">
                                     <div class="balance el-row">
                                         <div class="text-right el-col el-col-24">
                                             <span id="emp-name-id" class="pr-5 headline yellow-text"></span> 
@@ -108,11 +117,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                     <span id="old_round">—</span>
                                 </div>
                                 <button type="button" class="btn btn_red absolute right-2 top-2 text-sm" onclick="javascript: openScreen();">결과보기</button>
-                                <div class="mt-2 flex justify-center">
-                                    파워볼
-                                    <div data-v-d64cd776="" class="justify-center flex gap-1 mx-2" id="old_result_p"></div>
-                                    일반볼
-                                    <div data-v-7f6779bf="" class="justify-center flex gap-1 mx-2" id="old_result_n"></div>
+                                <div class="mt-2 senior-result-row flex flex-wrap justify-center items-center gap-3">
+                                    <div class="flex items-center gap-2 flex-wrap justify-center">
+                                        <span class="senior-result-label">파워볼</span>
+                                        <div data-v-d64cd776="" class="senior-old-result-wrap justify-center flex gap-1" id="old_result_p"></div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-wrap justify-center">
+                                        <span class="senior-result-label">일반볼</span>
+                                        <div data-v-7f6779bf="" class="senior-old-result-wrap justify-center flex gap-1" id="old_result_n"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

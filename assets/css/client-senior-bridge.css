@@ -1,8 +1,52 @@
 /* main.css Material .green / .red / .orange use !important background — overrides Vue-scoped text colors */
 
+/* Header pbg_info: 선배님 레이아웃 — 한 줄(줄바꿈 없이) */
+.main-content .header .pbg_info {
+    flex-wrap: nowrap !important;
+    align-items: center;
+    white-space: nowrap;
+}
+.main-content .header .pbg_info > div {
+    flex-shrink: 0;
+}
+.main-content .header .pbg_info #hours,
+.main-content .header .pbg_info #min,
+.main-content .header .pbg_info #sec,
+.main-content .header .pbg_info .pbg-clock-sep {
+    color: #fff !important;
+}
+.main-content .header .pbg_info > div:last-child {
+    color: #fff;
+}
+
 /* .main-container { color: rgba(0,0,0,.87) } inherits into senior-left on dark .main-content — force light UI copy */
 .senior-left {
     color: #fff;
+}
+
+/* 직전 회차 추첨 칩(#old_result_p / #old_result_n): 파워볼·일반볼 라벨과 칩을 묶어 한 줄에서도 잘리지 않게 */
+.senior-left .senior-result-row {
+    width: 100%;
+}
+
+.senior-left .senior-result-label {
+    font-size: 13px;
+    opacity: 0.9;
+    flex-shrink: 0;
+}
+
+.senior-left .senior-old-result-wrap {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 32px;
+}
+
+/* Vue 스코프용 .cycle 칩이 좌측 패널에서도 보이도록 (index_new.css와 동일 규칙 유지) */
+.senior-left .senior-old-result-wrap .cycle[data-v-d64cd776],
+.senior-left .senior-old-result-wrap .cycle[data-v-7f6779bf] {
+    flex-shrink: 0;
 }
 
 /* .sub_title / !bg-black do not set color; otherwise inherits .main-container (dark text on black bar) */

@@ -24,9 +24,10 @@ class PbRound_model extends CI_Model {
         return $result;  
     }
 
+    /** $id = round_fid (클라이언트 round_id / bet_round_fid와 동일 키) */
     public function getById($gameId, $id){
         
-        return $this->db->get_where($this->mTableName, array('round_game'=>$gameId, 'round_hash'=>$id))->row();
+        return $this->db->get_where($this->mTableName, array('round_game'=>$gameId, 'round_fid'=>$id))->row();
     }
 
     public function getByHash($gameId, $hash){
