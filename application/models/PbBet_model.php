@@ -75,7 +75,7 @@ class PbBet_model extends CI_Model {
     function getByUserId($strUserId, $nCount, $nGameId = -1)
     {
         
-        $strSql = "SELECT bet_fid, bet_state, bet_round_fid, bet_round_no, bet_time, bet_game, bet_mode, bet_target, bet_ratio, bet_money, bet_win_money  FROM ".$this->mTableName;
+        $strSql = "SELECT bet_fid, bet_state, bet_round_fid, bet_round_date, bet_round_no, bet_time, bet_game, bet_mode, bet_target, bet_ratio, bet_money, bet_win_money  FROM ".$this->mTableName;
         $strSql .=" WHERE bet_mb_uid='".$strUserId."' AND bet_state !=".BET_CANCEL;
         if($nGameId >= 0)
             $strSql .=" AND bet_game = '".$nGameId."' ";

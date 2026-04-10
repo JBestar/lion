@@ -35,7 +35,7 @@ function showBetData(arrBetData) {
             tHtml += arrBetData[idx].bet_mb_uid;
             tHtml += "</div></td>";
             tHtml += "<td><div class=\"cell\">";
-            tHtml += arrBetData[idx].bet_mb_name;
+            tHtml += arrBetData[idx].bet_mb_uid;
             tHtml += "</div></td>";
             tHtml += "<td><div class=\"cell\">";
             tHtml += getBetDetail(arrBetData[idx].bet_mode);

@@ -29,7 +29,7 @@
                             <th colspan="1" rowspan="1" class="el-table_27_column_188 is-leaf"><div class="cell">적중금액</div></th>
                             <th colspan="1" rowspan="1" class="el-table_27_column_189 is-leaf"><div class="cell">차익</div></th>
                             <th colspan="1" rowspan="1" class="el-table_27_column_190 is-leaf"><div class="cell">적중회차</div></th>
-                            <th colspan="1" rowspan="1" class="el-table_27_column_191 is-leaf"><div class="cell">마일리지</div></th>
+                            <th colspan="1" rowspan="1" class="el-table_27_column_191 is-leaf"><div class="cell">포인트</div></th>
                             
                         </tr>
                     </thead>
@@ -119,7 +119,7 @@
                                         <th colspan="1" rowspan="1" class="el-table_28_column_194 is-leaf"><div class="cell">적중금액</div></th>
                                         <th colspan="1" rowspan="1" class="el-table_28_column_195 is-leaf"><div class="cell">차익</div></th>
                                         <th colspan="1" rowspan="1" class="el-table_28_column_196 is-leaf"><div class="cell">적중회차</div></th>
-                                        <th colspan="1" rowspan="1" class="el-table_28_column_197 is-leaf"><div class="cell">마일리지</div></th>
+                                        <th colspan="1" rowspan="1" class="el-table_28_column_197 is-leaf"><div class="cell">포인트</div></th>
                                         
                                     </tr>
                                 </thead>

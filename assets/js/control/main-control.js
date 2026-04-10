@@ -42,7 +42,7 @@
         $("#el-dialog-employee-uid").attr("disabled", true);
         $("#el-dialog-employee-uid").attr("index", m_arrEmployee[idx].mb_fid);
         $("#el-dialog-employee-uid-div").addClass("is-disabled");
-        $("#el-dialog-employee-nickname").val(m_arrEmployee[idx].mb_nickname);
+        $("#el-dialog-employee-nickname").val(m_arrEmployee[idx].mb_uid);
         $("#el-dialog-employee-pwd").val(m_arrEmployee[idx].mb_pwd);
         $("#el-dialog-employee-ratio").val(m_arrEmployee[idx].mb_game_pb_ratio);
         $("#el-dialog-employee-liround").val(m_arrEmployee[idx].mb_limit_round);
@@ -230,8 +230,8 @@
 
                 tHtml1 += tTd1;
                 tHtml2 += tTd2;
-                tHtml1 += arrEmployee[idx].mb_nickname;
-                tHtml2 += arrEmployee[idx].mb_nickname;
+                tHtml1 += arrEmployee[idx].mb_uid;
+                tHtml2 += arrEmployee[idx].mb_uid;
                 tHtml1 += "</div></td>";
                 tHtml2 += "</div></td>";
 

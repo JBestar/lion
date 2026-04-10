@@ -60,7 +60,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                         </div> 
                         <div class="el-col el-col-16" style="text-align: right;">
                             <span >보유금액</span><span class="amount" id="emp-money-id"></span> 
-                            <span >마일리지</span><span class="amount" id="emp-mileage-id"></span> 
+                            <span >포인트</span><span class="amount" id="emp-mileage-id"></span> 
                             <span >수수료율</span><span class="amount" id="emp-ratio-id"></span> 
                             <button type="button" class="el-button el-button--primary" onclick="showChargeDlg();">
                                 <span>충전신청</span>
@@ -69,7 +69,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                 <span>환전신청</span>
                             </button> 
                             <button type="button" class="el-button el-button--primary" onclick="showMileageDlg();">
-                                <span>마일리지전환</span>
+                                <span>포인트전환</span>
                             </button>
                         </div>
                     </div>

@@ -280,9 +280,9 @@
 
             <!--================Mileage Dialog================-->
             <div class="el-dialog__wrapper" id="el-dialog-mileage-id" style="z-index: 2031; display:none;">
-                <div role="dialog" aria-modal="true" aria-label="마일리지신청" class="el-dialog" style="margin-top: 5vh; width: 60%;">
+                <div role="dialog" aria-modal="true" aria-label="포인트신청" class="el-dialog" style="margin-top: 5vh; width: 60%;">
                     <div class="el-dialog__header">
-                        <span class="el-dialog__title">마일리지신청</span>
+                        <span class="el-dialog__title">포인트신청</span>
                         <button type="button" id="el-dialog-mileage-close-id" class="el-dialog__headerbtn">
                             <i class="el-dialog__close fas fa-times"></i>
                         </button>
@@ -290,13 +290,13 @@
                     <div class="el-dialog__body">
                         <form class="el-form">
                             <div class="el-form-item el-form-item--small">
-                                <label class="el-form-item__label" style="width: 100px;">적립마일리지</label>
+                                <label class="el-form-item__label" style="width: 100px;">적립포인트</label>
                                 <div class="el-form-item__content"  id="el-dialog-mileage-amount-id" style="margin-left: 100px;">
                                     
                                 </div>
                             </div> 
                             <div class="el-form-item el-form-item--small">
-                                <label class="el-form-item__label" style="width: 100px;">신청마일리지</label>
+                                <label class="el-form-item__label" style="width: 100px;">신청포인트</label>
                                 <div class="el-form-item__content" style="margin-left: 100px;">
                                     <div class="el-row" style="margin-left: -2.5px; margin-right: -2.5px;">
                                         <div class="el-col el-col-21" style="padding-left: 2.5px; padding-right: 2.5px;">
@@ -338,7 +338,7 @@
                                     <thead class="has-gutter">
                                         <tr class="">
                                             <th colspan="1" rowspan="1" class="el-table_18_column_128     is-leaf">
-                                                <div class="cell">전환마일리지</div>
+                                                <div class="cell">전환포인트</div>
                                             </th>
                                             <th colspan="1" rowspan="1" class="el-table_18_column_129     is-leaf">
                                                 <div class="cell">처리일시</div>
@@ -357,7 +357,7 @@
                                     <thead class="has-gutter">
                                         <tr class="">
                                             <th colspan="1" rowspan="1" class="el-table_18_column_128     is-leaf">
-                                                <div class="cell">전환마일리지</div>
+                                                <div class="cell">전환포인트</div>
                                             </th>
                                             <th colspan="1" rowspan="1" class="el-table_18_column_129     is-leaf">
                                                 <div class="cell">처리일시</div>

@@ -31,7 +31,7 @@
                             <th colspan="1" rowspan="1" class="el-table_26_column_179 is-leaf"><div class="cell">비밀번호</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_180 is-leaf"><div class="cell">수수료율</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_181 is-leaf"><div class="cell">보유금액</div></th>
-                            <th colspan="1" rowspan="1" class="el-table_26_column_182 is-leaf"><div class="cell">마일리지</div></th>
+                            <th colspan="1" rowspan="1" class="el-table_26_column_182 is-leaf"><div class="cell">포인트</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_183 is-leaf"><div class="cell">가입날짜</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_184 is-leaf"><div class="cell">로그인날짜</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_185 is-hidden is-leaf"><div class="cell">기능</div></th>
@@ -61,7 +61,7 @@
                             <th colspan="1" rowspan="1" class="el-table_26_column_179 is-leaf"><div class="cell">비밀번호</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_180 is-leaf"><div class="cell">수수료율</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_181 is-leaf"><div class="cell">보유금액</div></th>
-                            <th colspan="1" rowspan="1" class="el-table_26_column_182 is-leaf"><div class="cell">마일리지</div></th>
+                            <th colspan="1" rowspan="1" class="el-table_26_column_182 is-leaf"><div class="cell">포인트</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_183 is-leaf"><div class="cell">가입날짜</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_184 is-leaf"><div class="cell">로그인날짜</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_185 is-leaf"><div class="cell">기능</div></th>

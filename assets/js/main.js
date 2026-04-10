@@ -1,11 +1,9 @@
 var worker;
 var m_objUser = null;
 
-/** 로그인 계정 기준 표시명 (배팅·영수증 bet_mb_name) */
+/** 로그인 계정 기준 표시명: 아이디(mb_uid) 고정 */
 function getBetCustomerName() {
     if (!m_objUser) return "";
-    var nick = m_objUser.mb_nickname;
-    if (nick != null && String(nick).length > 0) return String(nick);
     if (m_objUser.mb_uid != null && String(m_objUser.mb_uid).length > 0) return String(m_objUser.mb_uid);
     return "";
 }
@@ -17,6 +15,8 @@ var m_btnBet = null;
 var m_bShowResult = false;
 /** 직전 마감 회차 결과(pbroundresult)를 한 번이라도 불러왔는지 — 초기 로드에서 setRoundResult 누락 방지 */
 var m_bRoundResultSyncedOnce = false;
+/** 당첨내역 메뉴: 좌측 배팅리스트에 적중(결과 확정) 행만 표시 */
+var m_betListWinsOnly = false;
 
 $(document).ready(function() {
 
@@ -228,6 +228,7 @@ function selectMenu(eleLi) {
 }
 
 function selectGame(nGameId) {
+    m_betListWinsOnly = false;
     $("#game-img-id").attr("name", "");
     $(".game-button").removeClass("select");
     if (nGameId == 0) {
@@ -497,11 +498,15 @@ function showMemberInfo(objUser) {
         return;
     m_objUser = objUser;
 
-    $("#emp-name-id").text(objUser.mb_nickname);
-    $("#emp-money-id").text(parseInt(objUser.mb_money).toLocaleString() + " 원");
-    $("#emp-mileage-id").text(parseInt(objUser.mb_point).toLocaleString());
-
     $("#bet-name-id").text(getBetCustomerName());
+    var uid = objUser.mb_uid != null ? String(objUser.mb_uid) : "";
+    var money = parseInt(objUser.mb_money, 10) || 0;
+    var pt = parseInt(objUser.mb_point, 10) || 0;
+    $("#header-user-summary").html(
+        "<span class=\"text-yellow-300 font-bold\">" + uid + "님</span>" +
+        " 보유머니: <span class=\"text-yellow-300 font-bold\">" + money.toLocaleString() + "원</span>" +
+        " P <span class=\"text-yellow-300 font-bold\">" + pt + "</span>"
+    );
 
 }
 
@@ -511,9 +516,15 @@ function showAmountInfo(objUser) {
     m_objUser.mb_money = objUser.mb_money;
     m_objUser.mb_point = objUser.mb_point;
 
-    $("#emp-money-id").text(parseInt(objUser.mb_money).toLocaleString() + " 원");
-    $("#emp-mileage-id").text(parseInt(objUser.mb_point).toLocaleString());
     $("#bet-name-id").text(getBetCustomerName());
+    var uid = m_objUser && m_objUser.mb_uid != null ? String(m_objUser.mb_uid) : "";
+    var money = parseInt(objUser.mb_money, 10) || 0;
+    var pt = parseInt(objUser.mb_point, 10) || 0;
+    $("#header-user-summary").html(
+        "<span class=\"text-yellow-300 font-bold\">" + uid + "님</span>" +
+        " 보유머니: <span class=\"text-yellow-300 font-bold\">" + money.toLocaleString() + "원</span>" +
+        " P <span class=\"text-yellow-300 font-bold\">" + pt + "</span>"
+    );
 
 }
 
@@ -661,6 +672,19 @@ function setRoundResult(nRoundId) {
     requestRoundResult();
 }
 
+function formatRoundDisplay(roundFid, roundNo, suffix) {
+    suffix = suffix || "";
+    var fid = roundFid != null && roundFid !== "" ? parseInt(roundFid, 10) : 0;
+    var rn = roundNo != null && roundNo !== "" ? parseInt(roundNo, 10) : 0;
+    if (isNaN(fid)) fid = 0;
+    if (isNaN(rn)) rn = 0;
+
+    if (fid > 0 && rn > 0) return String(fid) + "(" + String(rn) + ")" + suffix;
+    if (fid > 0) return String(fid) + suffix;
+    if (rn > 0) return String(rn) + suffix;
+    return "-";
+}
+
 function seniorCycleHtml(label, cls, dataV) {
     var extra = cls ? " " + cls : "";
     return '<div data-v-' + dataV + '="" class="cycle' + extra + '">' + label + "</div>";
@@ -678,14 +702,16 @@ function seniorRoundHasDrawResults(objRound) {
 function fillSeniorRoundLabel(objRound) {
     var t = "";
     if (objRound) {
-        var n = objRound.round_num != null && objRound.round_num !== "" ? objRound.round_num : objRound.round_no;
-        if (n != null && n !== "") t = n + "회차";
+        // PBG/코인/EOS 공통: round_fid(누계) + round_num(일회차)
+        var fid = objRound.round_fid != null ? objRound.round_fid : (objRound.round_id != null ? objRound.round_id : "");
+        var rn = objRound.round_num != null && objRound.round_num !== "" ? objRound.round_num : objRound.round_no;
+        t = formatRoundDisplay(fid, rn, "회차");
     }
-    if (!t) {
-        var bid = $("#buy-info-round-id").text();
-        if (bid && bid.length > 0) t = bid + "회차";
+    if (!t || t === "-") {
+        // 결과 API가 비었을 때 폴백: 진행 회차 기준
+        t = formatRoundDisplay(m_objRound ? m_objRound.round_id : "", m_objRound ? m_objRound.round_no : "", "회차");
     }
-    if (t) $("#old_round").text(t);
+    if (t && t !== "-") $("#old_round").text(t);
 }
 
 function fillSeniorResultCells(objRound) {
@@ -744,6 +770,15 @@ function vieworderUrlForBetRow(el) {
     return "/home/vieworder?g=" + g + "&r=" + encodeURIComponent(r);
 }
 
+function vieworderUrlForRound(g, roundFid, roundNo) {
+    if (g === undefined || g === null) g = getGameId();
+    g = parseInt(g, 10);
+    if (isNaN(g)) g = 0;
+    var r = g === 0 ? roundFid : roundNo;
+    if (r === undefined || r === null) r = "";
+    return "/home/vieworder?g=" + g + "&r=" + encodeURIComponent(r);
+}
+
 function getBetListLabelSenior(el) {
     var mode = parseInt(el.bet_mode, 10);
     var cat = "파워볼";
@@ -757,6 +792,35 @@ function getBetListLabelSenior(el) {
     var s = cat + " [" + shortL + "]";
     if (ratio) s += " [" + ratio + "]";
     return s;
+}
+
+/** 배팅리스트 행이 결과 적중인지 (당첨내역 필터용) */
+function isSeniorBetWinHit(element) {
+    if (!element) return false;
+    var win = parseInt(element.bet_win_money, 10) || 0;
+    var st = parseInt(element.bet_state, 10);
+    if (st === 3) return true;
+    if (win > 0) return true;
+    return false;
+}
+
+/** 배팅리스트 빨간 구분선: 회차일(bet_round_date) 우선, 없으면 bet_time의 날짜 */
+function getBetDateKeyForListSep(element) {
+    if (!element) return "";
+    var rd = element.bet_round_date;
+    if (rd != null && String(rd).length > 0) {
+        var sm = String(rd).trim().match(/^(\d{4}-\d{2}-\d{2})/);
+        if (sm) return sm[1];
+    }
+    var betTime = element.bet_time;
+    if (betTime == null || betTime === "") return "";
+    var s = String(betTime).trim();
+    var m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return "";
+    var pad2 = function(n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
 }
 
 /** 시니어 패널 각 카드 하단 노란 숫자: 현재 회차(bet_round_fid)에 해당 bet_mode로 배팅한 누적 금액 */
@@ -804,21 +868,24 @@ function requestRecentBetList() {
 }
 
 function fillSeniorBetListTable(arrBetData) {
-    var ROW_SEP = '<tr style="height:2px;"><td colspan="5" style="border-bottom:2px solid #d62929;"></td></tr>';
+    var ROW_SEP = '<tr class="senior-bet-date-sep"><td colspan="5" style="height:4px;padding:0;line-height:0;background:#d62929;border:0;"></td></tr>';
     var tHtml = "";
-    if (arrBetData != null && arrBetData.length > 0) {
-        var prevFid = null;
+    var raw = arrBetData != null ? arrBetData : [];
+    var rows = m_betListWinsOnly ? raw.filter(function(el) { return isSeniorBetWinHit(el); }) : raw;
+    if (rows.length > 0) {
+        var prevDateKey = null;
         var gid = getGameId();
-        for (var i = 0; i < arrBetData.length; i++) {
-            var element = arrBetData[i];
-            var fid = element.bet_round_fid != null ? String(element.bet_round_fid) : "";
-            if (i > 0 && fid !== prevFid) tHtml += ROW_SEP;
-            prevFid = fid;
+        for (var i = 0; i < rows.length; i++) {
+            var element = rows[i];
+            var dateKey = getBetDateKeyForListSep(element);
+            if (i > 0 && dateKey !== prevDateKey) tHtml += ROW_SEP;
+            prevDateKey = dateKey;
 
             var betLabel = getBetListLabelSenior(element);
             var winMoney = parseInt(element.bet_win_money, 10) || 0;
             var betMoney = parseInt(element.bet_money, 10) || 0;
             var roundNo = element.bet_round_no != null ? element.bet_round_no : "";
+            var roundFid = element.bet_round_fid != null ? element.bet_round_fid : "";
             var lastCol = "";
             var sameGame = parseInt(element.bet_game, 10) === gid;
             if (m_btnBet && !m_btnBet.disabled && sameGame && element.bet_round_no == m_objRound.round_no)
@@ -830,7 +897,7 @@ function fillSeniorBetListTable(arrBetData) {
 
             var voUrl = vieworderUrlForBetRow(element);
             tHtml += "<tr style=\"height:45px;\">";
-            tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\"><a href=\"#\" onclick=\"openMemWin(" + JSON.stringify(voUrl) + ",1200,850);return false;\">" + roundNo + "회</a></td>";
+            tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\"><a href=\"#\" onclick=\"openMemWin(" + JSON.stringify(voUrl) + ",1200,850);return false;\">" + formatRoundDisplay(roundFid, roundNo, '회') + "</a></td>";
             tHtml += "<td style=\"width:34%;border-bottom:1px solid #515668;\"><span class=\"left\" style=\"padding-left:10px;\">" + betLabel + "</span></td>";
             tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\">" + betMoney.toLocaleString() + "</td>";
             tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\">" + winMoney.toLocaleString() + "</td>";
@@ -839,7 +906,65 @@ function fillSeniorBetListTable(arrBetData) {
         }
     }
     $("#client-bet-list-tbody").html(tHtml);
-    updateSeniorCurBetDisplays(arrBetData);
+    updateSeniorCurBetDisplays(raw);
+    fillSeniorRoundBetSummary(raw);
+}
+
+function fillSeniorRoundBetSummary(arrBetData) {
+    var $tb = $("#client-round-summary-tbody");
+    if (!$tb.length) return;
+    var gid = getGameId();
+    if (gid < 0) {
+        $tb.empty();
+        return;
+    }
+
+    // 1) 최근 5개 회차 슬롯(배팅 없으면 0원/0건)
+    var startFid = m_objRound && m_objRound.round_id != null ? parseInt(m_objRound.round_id, 10) : 0;
+    var startNo = m_objRound && m_objRound.round_no != null ? parseInt(m_objRound.round_no, 10) : 0;
+    if (isNaN(startFid)) startFid = 0;
+    if (isNaN(startNo)) startNo = 0;
+    var targets = [];
+    for (var t = 0; t < 5; t++) {
+        var fidN = startFid > 0 ? (startFid - t) : 0;
+        var rnN = startNo > 0 ? (startNo - t) : 0;
+        while (rnN <= 0 && startNo > 0) rnN += 288;
+        targets.push({ fid: fidN > 0 ? String(fidN) : "", rn: rnN > 0 ? String(rnN) : "" });
+    }
+
+    // 2) 최근 베팅 목록을 회차별 합계/건수로 집계
+    var map = {};
+    if (arrBetData != null && arrBetData.length > 0) {
+        for (var i = 0; i < arrBetData.length; i++) {
+            var el = arrBetData[i];
+            if (parseInt(el.bet_game, 10) !== gid) continue;
+            var fid = el.bet_round_fid != null ? String(el.bet_round_fid) : "";
+            var rn = el.bet_round_no != null ? String(el.bet_round_no) : "";
+            var key = gid === 0 ? fid : rn;
+            if (!key) continue;
+            if (!map[key]) {
+                map[key] = { fid: fid, rn: rn, sum: 0, cnt: 0 };
+            }
+            map[key].sum += (parseInt(el.bet_money, 10) || 0);
+            map[key].cnt += 1;
+        }
+    }
+
+    var html = "";
+    for (var j = 0; j < targets.length; j++) {
+        var tg = targets[j];
+        var k = gid === 0 ? tg.fid : tg.rn;
+        var it = (k && map[k]) ? map[k] : { fid: tg.fid, rn: tg.rn, sum: 0, cnt: 0 };
+        var label = formatRoundDisplay(it.fid, it.rn, "회");
+        var url = vieworderUrlForRound(gid, it.fid, it.rn);
+        html += "<tr>";
+        html += "<td><span style=\"color:#aace37\">" + label + "</span></td>";
+        html += "<td>" + (it.sum || 0).toLocaleString() + " 원</td>";
+        html += "<td>" + (it.cnt || 0).toLocaleString() + " 건</td>";
+        html += "<td><div class=\"btn_result_s pointlink\" onclick=\"openMemWin(" + JSON.stringify(url) + ", '1200', '850');\">상세정보</div></td>";
+        html += "</tr>";
+    }
+    $tb.html(html);
 }
 
 function showRoundResult(objRound, arrBetData) {
@@ -1031,6 +1156,9 @@ function cancelBet(fid, objBtn) {
         "fid": fid
     };
     var jsonData = JSON.stringify(objData);
+    try {
+        console.log("[bet_cancel] request", objData);
+    } catch (eLog) {}
     $.ajax({
         url: '/api/bet_cancel' + location.search,
         type: 'post',
@@ -1038,7 +1166,9 @@ function cancelBet(fid, objBtn) {
         dataType: "json",
         success: function(jResult) {
             $(objBtn).attr("disabled", false);
-            // console.log(jResult);
+            try {
+                console.log("[bet_cancel] response", jResult);
+            } catch (eLog2) {}
             if (jResult.status == "success") {
                 showAlertBox(0, "취소되었습니다.", 2000);
                 setRoundResult(getLastCompletedRoundKey());
@@ -1055,7 +1185,14 @@ function cancelBet(fid, objBtn) {
         },
         error: function(request, status, error) {
             $(objBtn).attr("disabled", false);
-            // console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+            try {
+                console.log("[bet_cancel] xhr_error", {
+                    status: request.status,
+                    statusText: status,
+                    error: error,
+                    responseText: request.responseText ? String(request.responseText).substring(0, 800) : ""
+                });
+            } catch (eLog3) {}
         }
 
     });
@@ -1747,15 +1884,7 @@ function showTime() {
         var rn = m_objRound && m_objRound.round_no != null ? parseInt(m_objRound.round_no, 10) : 0;
         if (isNaN(rid)) rid = 0;
         if (isNaN(rn)) rn = 0;
-        if (rid > 0 && rn > 0) {
-            elRound.textContent = String(rid) + "(" + rn + "회)";
-        } else if (rid > 0) {
-            elRound.textContent = String(rid);
-        } else if (rn > 0) {
-            elRound.textContent = rn + "회";
-        } else {
-            elRound.textContent = "—";
-        }
+        elRound.textContent = formatRoundDisplay(rid, rn, "회");
     }
 
     //Request for Current Round Data to WebServer Per 1 Minute; 
@@ -1956,26 +2085,8 @@ function openScreen() {
 }
 
 function showWinHistoryPage() {
-
-    var w = 320;
-    var h = 1000;
-    var dualScreenLeft = window.screenLeft != undefined ? window.screenLeft : screen.left;
-    var dualScreenTop = window.screenTop != undefined ? window.screenTop : screen.top;
-    var width = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
-    var height = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
-    var left = ((width / 2) - (w / 2)) + dualScreenLeft;
-    var top = ((height / 2) - (h / 2)) + dualScreenTop;
-
-
-    if (location.search.length > 0) {
-        var strUrl = "/home/vieworder" + location.search + "&g=" + m_objRound.game.toString();
-        if (m_objRound.game >= 1) {
-            strUrl += "&r=" + (m_objRound.round_no - 1).toString();
-        } else {
-            strUrl += "&r=" + (m_objRound.round_id - 1).toString();
-        }
-        window.open(strUrl, "_blank", 'scrollbars=no, width=' + w + ', height=' + h + ', top=' + top + ', left=' + left);
-    }
+    m_betListWinsOnly = true;
+    requestRecentBetList();
 }
 
 function showBetHistoryPage() {
@@ -2006,6 +2117,8 @@ function showBetHistoryPage() {
 /*=============BetHistoryDialog=============== */
 
 function showBetHistoryDlg() {
+    m_betListWinsOnly = false;
+    requestRecentBetList();
     var fRatio = m_objUser.mb_game_pb_ratio;
     fRatio = fRatio / 100.0;
     $("#el-dialog-bethistory-ratio-id").text(fRatio.toFixed(5));
@@ -2036,7 +2149,7 @@ function showBetHistoryDlgData(arrBetData) {
                 tHtml += arrBetData[idx].bet_round_no;
             tHtml += "</div></td>";
             tHtml += "<td><div class=\"cell\">";
-            tHtml += arrBetData[idx].bet_mb_name;
+            tHtml += arrBetData[idx].bet_mb_uid;
             tHtml += "</div></td>";
             tHtml += "<td><div class=\"cell\">";
             tHtml += arrBetData[idx].bet_time;
@@ -2424,7 +2537,7 @@ function initEmpInfoDlg() {
     $("#el-dialog-empinfo-pwd-id").val('');
     $("#el-dialog-empinfo-newpwd-id1").val('');
     $("#el-dialog-empinfo-newpwd-id2").val('');
-    $("#el-dialog-empinfo-nickname-id").val(m_objUser.mb_nickname);
+    $("#el-dialog-empinfo-nickname-id").val(m_objUser.mb_uid);
     $("#el-dialog-empinfo-print-id").prop('checked', m_objUser.mb_state_print == 1 ? true : false);
 }
 
@@ -2438,7 +2551,7 @@ function saveToPDF(objBetInfo) {
     $("#el-pdf-time-id").text(  "구매날짜 :  "+objBetInfo.bet_time);
     $("#el-pdf-round-id").text( "추첨회차 :  "+objBetInfo.bet_round_fid);
     $("#el-pdf-num-id").text(   "일회차 :    "+objBetInfo.bet_round_no);
-    $("#el-pdf-name-id").text(  "구매자 :    "+objBetInfo.bet_mb_name);
+    $("#el-pdf-name-id").text(  "구매자 :    "+objBetInfo.bet_mb_uid);
     $("#el-pdf-mode-id").text(  "게임종류 :  "+getBetDetail(objBetInfo.bet_mode));
     $("#el-pdf-ratio-id").text( "배당율 :    "+objBetInfo.bet_ratio);
     $("#el-pdf-amount-id").text("포인트 :    "+parseInt(objBetInfo.bet_money).toLocaleString());
@@ -2482,13 +2595,13 @@ function saveToPDF(objBetInfo) {
 
     var strUrl = "http://127.0.0.1:8000/print?";
     strUrl += "round=" + strRound;
-    strUrl += "&customer=" + objBetInfo.bet_mb_name;
+    strUrl += "&customer=" + objBetInfo.bet_mb_uid;
     strUrl += "&betid=" + objBetInfo.bet_fid;
     strUrl += "&betname=" + strBetName;
     strUrl += "&money=" + objBetInfo.bet_money;
     strUrl += "&rate=" + objBetInfo.bet_ratio;
     strUrl += "&tround=" + objBetInfo.bet_round_no;
-    strUrl += "&usernm=" + objBetInfo.bet_mb_name; /*m_objUser.mb_nickname*/
+    strUrl += "&usernm=" + objBetInfo.bet_mb_uid;
     strUrl += "&color=" + strColor;
     strUrl += "&total=" + parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
     strUrl += "&userid=" + m_objUser.mb_fid;
@@ -2496,13 +2609,13 @@ function saveToPDF(objBetInfo) {
     /*
     var data = {};
     data.round = objBetInfo.bet_round_fid;
-    data.customer = objBetInfo.bet_mb_name;
+    data.customer = objBetInfo.bet_mb_uid;
     data.betid = objBetInfo.bet_fid;
     data.betname = getBetDetail(objBetInfo.bet_mode);
     data.money = objBetInfo.bet_money;
     data.rate = objBetInfo.bet_ratio;
     data.tround = objBetInfo.bet_round_no;
-    data.usernm = objBetInfo.mb_nickname;
+    data.usernm = objBetInfo.bet_mb_uid;
     data.color = objBetInfo.red;
     data.total = parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
 
@@ -2510,13 +2623,13 @@ function saveToPDF(objBetInfo) {
 
     var strUrl = "http://127.0.0.1:8000/print?";
     strUrl += "round=" + objBetInfo.bet_round_fid;
-    strUrl += "&customer=" + objBetInfo.bet_mb_name;
+    strUrl += "&customer=" + objBetInfo.bet_mb_uid;
     strUrl += "&betid=" + objBetInfo.bet_fid;
     strUrl += "&betname=" + getBetDetail(objBetInfo.bet_mode);
     strUrl += "&money=" + objBetInfo.bet_money;
     strUrl += "&rate=" + objBetInfo.bet_ratio;
     strUrl += "&tround=" + objBetInfo.bet_round_no;
-    strUrl += "&usernm=" + m_objUser.mb_nickname;
+    strUrl += "&usernm=" + getBetCustomerName();
     strUrl += "&color=red";
     strUrl += "&total=" + parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
     strUrl += "&userid=" + m_objUser.mb_fid;

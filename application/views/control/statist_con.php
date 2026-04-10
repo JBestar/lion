@@ -48,10 +48,10 @@
                                 <div class="cell">적중회차</div>
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_19_column_135     is-leaf">
-                                <div class="cell">마일리지</div>
+                                <div class="cell">포인트</div>
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_19_column_136     is-leaf">
-                                <div class="cell">총판마일리지</div>
+                                <div class="cell">총판포인트</div>
                             </th>
                             <th class="gutter" style="width: 0px; display: none;"></th>
                         </tr>
@@ -85,10 +85,10 @@
                                 <div class="cell">적중회차</div>
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_19_column_135     is-leaf">
-                                <div class="cell">마일리지</div>
+                                <div class="cell">포인트</div>
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_19_column_136     is-leaf">
-                                <div class="cell">총판마일리지</div>
+                                <div class="cell">총판포인트</div>
                             </th>
                             
                         </tr>
@@ -243,7 +243,7 @@
                                         <th colspan="1" rowspan="1" class="el-table_20_column_142     is-leaf">
                                             <div class="cell">적중금액</div>
                                         </th><th colspan="1" rowspan="1" class="el-table_20_column_143     is-leaf">
-                                            <div class="cell">마일리지</div>
+                                            <div class="cell">포인트</div>
                                         </th>
                                         <th colspan="1" rowspan="1" class="el-table_20_column_144     is-leaf">
                                             <div class="cell">보유금액</div>
@@ -294,7 +294,7 @@
                                             <div class="cell">적중금액</div>
                                         </th>
                                         <th colspan="1" rowspan="1" class="el-table_20_column_143     is-leaf">
-                                            <div class="cell">마일리지</div>
+                                            <div class="cell">포인트</div>
                                         </th>
                                         <th colspan="1" rowspan="1" class="el-table_20_column_145     is-leaf">
                                             <div class="cell">구매시간</div>

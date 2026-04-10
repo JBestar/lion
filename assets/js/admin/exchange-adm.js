@@ -30,7 +30,7 @@
                 else if(arrExchange[idx].money_change_type==2)
                     tHtml += "<span class=\"el-tag el-tag--light\">환전확인</span>"
                 else if(arrExchange[idx].money_change_type==3)
-                    tHtml += "<span class=\"el-tag el-tag--light\">마일리지전환</span>"
+                    tHtml += "<span class=\"el-tag el-tag--light\">포인트전환</span>"
                 else if(arrExchange[idx].money_change_type==10)
                     tHtml += "<span class=\"el-tag el-tag--light\">직충전송금</span>"
                 else if(arrExchange[idx].money_change_type==11)

@@ -121,7 +121,7 @@
             return;
         m_objUser = objUser;
 
-        $("#emp-name-id").text(objUser.mb_nickname);
+        $("#emp-name-id").text(objUser.mb_uid);
         $("#emp-money-id").text(parseInt(objUser.mb_money).toLocaleString());
         $("#emp-mileage-id").text(parseInt(objUser.mb_point).toLocaleString());
         $("#emp-ratio-id").text(objUser.mb_game_pb_ratio);
@@ -135,7 +135,7 @@
         if (arrMsgData != null && arrMsgData.length > 0) {
             tMessage = arrMsgData[0].notice_title;
             if (m_objUser != null) {
-                speak(m_objUser.mb_nickname, { rate: 1, pitch: 1.2 });
+                speak(m_objUser.mb_uid, { rate: 1, pitch: 1.2 });
             }
             setTimeout(function() { speak("새 메시지가 도착하엿습니다.", { rate: 1, pitch: 1.2 }); }, 1000);
 

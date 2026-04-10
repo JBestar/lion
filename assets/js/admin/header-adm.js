@@ -130,7 +130,7 @@
             return;
         m_objUser = objUser;
 
-        $("#emp-name-id").text(objUser.mb_nickname);
+        $("#emp-name-id").text(objUser.mb_uid);
 
         
     }

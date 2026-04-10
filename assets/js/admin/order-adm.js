@@ -45,7 +45,7 @@ function showBetData(arrBetData) {
             tHtml += arrBetData[idx].bet_mb_uid;
             tHtml += "</div></td>";
             tHtml += '<td><div class="cell">';
-            tHtml += arrBetData[idx].bet_mb_name;
+            tHtml += arrBetData[idx].bet_mb_uid;
             tHtml += "</div></td>";
             tHtml += '<td><div class="cell">';
             tHtml += getBetDetail(arrBetData[idx].bet_mode);
@@ -63,7 +63,7 @@ function showBetData(arrBetData) {
                 tHtml += '<button type="button" class="el-button el-button--danger el-button--small" onclick="changeBet(this);"';
                 tHtml += " data-game='" + arrBetData[idx].bet_game + "' data-id='" + arrBetData[idx].bet_fid;
                 tHtml += "' data-mode='" + arrBetData[idx].bet_mode;
-                tHtml += "' data-uid='" + arrBetData[idx].bet_mb_uid + "' data-name='" + arrBetData[idx].bet_mb_name + "'";
+                tHtml += "' data-uid='" + arrBetData[idx].bet_mb_uid + "' data-name='" + arrBetData[idx].bet_mb_uid + "'";
                 tHtml += "><span>변경</span></button>";
             }
 

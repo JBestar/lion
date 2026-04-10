@@ -1,5 +1,12 @@
 /* main.css Material .green / .red / .orange use !important background — overrides Vue-scoped text colors */
 
+/* 배팅마감 오버레이(betLock z-index)보다 항상 위: 모든 다이얼로그·메시지·알림 */
+.main-container-wrap .el-dialog__wrapper,
+.main-container-wrap #el-message-box-id,
+.main-container-wrap #el-alert-box-id {
+    z-index: 100050 !important;
+}
+
 /* Header pbg_info: 선배님 레이아웃 — 한 줄(줄바꿈 없이) */
 .main-content .header .pbg_info {
     flex-wrap: nowrap !important;
@@ -66,6 +73,14 @@
     color: #fff;
 }
 
+.senior-right .betRound_box .table_list td {
+    color: #fff;
+}
+
+.senior-right .betRound_box .btn_result_s {
+    color: #fff;
+}
+
 .senior-right .card[data-v-1f51d655] {
     color: #fff;
 }
@@ -105,4 +120,182 @@
 .senior-right font[data-v-ef6a603f].red {
     background-color: transparent !important;
     border-color: transparent !important;
+}
+
+/* Header 우측 유저 요약(아이디/보유머니/포인트): 한 줄 고정 */
+.main-content .header .header-user-summary-wrap {
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
+    width: 100%;
+}
+
+.main-content .header #header-user-summary {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Header 상단(시계/회차/유저요약) 1줄 정렬: el-col %width 대신 flex로 우측 끝 밀기 */
+.main-content .header .pt-1.el-row {
+    display: flex;
+    align-items: center;
+}
+
+.main-content .header .pt-1.el-row > .el-col {
+    width: auto !important;
+}
+
+.main-content .header .pt-1.el-row > .el-col.el-col-17 {
+    flex: 0 0 auto;
+}
+
+.main-content .header .pt-1.el-row > .el-col.el-col-7 {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-right: 14px;
+}
+
+/* tailwind-ish class가 혹시 누락된 페이지에서도 노란색 유지 */
+.main-content .header #header-user-summary .text-yellow-300 {
+    color: #fde047;
+}
+
+/* 헤더 전체 노란 줄 제거 — 유저정보 열 아래에만 표시 */
+.main-content .header {
+    border-bottom: none;
+}
+
+.main-content .header .pt-1.el-row > .el-col.el-col-7 {
+    border-bottom: 2px solid #ffd04b;
+    padding-bottom: 0.5vh;
+    box-sizing: border-box;
+}
+
+/* 메뉴바 아래 연한(흰색에 가까운) 구분선 제거 — Element horizontal menu 기본 border */
+.main-content .header .el-menu--horizontal {
+    border-bottom: none;
+}
+
+/* 메뉴바 hover: 배경 변화 없이 글자만 노란색 */
+.main-content .header .el-menu--horizontal > .el-menu-item:hover {
+    color: rgb(255, 208, 75) !important;
+    background-color: transparent !important;
+}
+
+/* PBG파워볼·카지노·슬롯: hover 시 글자만 노란색 / 선택 시 글자·밑줄 노란색 */
+.senior-bet-layout .game-button:hover {
+    color: rgb(255, 208, 75);
+    background-color: transparent !important;
+}
+
+.senior-bet-layout .game-button.select {
+    color: rgb(255, 208, 75);
+    border-bottom: 3px solid rgb(255, 208, 75);
+}
+
+/* 포인트신청 / 배팅내역 / 충전 / 환전 / 시스템 메시지창: 프로젝트 기본 el-button 스타일 유지 */
+#el-dialog-mileage-id .el-button,
+#el-dialog-bethistory-id .el-button,
+#el-dialog-charge-id .el-button,
+#el-dialog-discharge-id .el-button,
+#el-message-box-id .el-button {
+    display: inline-block !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    background: #fff !important;
+    border: 1px solid #dcdfe6 !important;
+    color: #606266 !important;
+    -webkit-appearance: none !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    outline: 0 !important;
+    margin: 0 !important;
+    transition: .1s !important;
+    font-weight: 500 !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+    border-radius: 4px !important;
+}
+
+#el-dialog-mileage-id .el-button:focus,
+#el-dialog-mileage-id .el-button:hover,
+#el-dialog-bethistory-id .el-button:focus,
+#el-dialog-bethistory-id .el-button:hover,
+#el-dialog-charge-id .el-button:focus,
+#el-dialog-charge-id .el-button:hover,
+#el-dialog-discharge-id .el-button:focus,
+#el-dialog-discharge-id .el-button:hover,
+#el-message-box-id .el-button:focus,
+#el-message-box-id .el-button:hover {
+    color: #409eff !important;
+    border-color: #c6e2ff !important;
+    background-color: #ecf5ff !important;
+}
+
+#el-dialog-mileage-id .el-button--primary,
+#el-dialog-bethistory-id .el-button--primary,
+#el-dialog-charge-id .el-button--primary,
+#el-dialog-discharge-id .el-button--primary,
+#el-message-box-id .el-button--primary {
+    color: #fff !important;
+    background-color: #409eff !important;
+    border-color: #409eff !important;
+}
+
+#el-dialog-mileage-id .el-button--primary:focus,
+#el-dialog-mileage-id .el-button--primary:hover,
+#el-dialog-bethistory-id .el-button--primary:focus,
+#el-dialog-bethistory-id .el-button--primary:hover,
+#el-dialog-charge-id .el-button--primary:focus,
+#el-dialog-charge-id .el-button--primary:hover,
+#el-dialog-discharge-id .el-button--primary:focus,
+#el-dialog-discharge-id .el-button--primary:hover,
+#el-message-box-id .el-button--primary:focus,
+#el-message-box-id .el-button--primary:hover {
+    background: #66b1ff !important;
+    border-color: #66b1ff !important;
+    color: #fff !important;
+}
+
+#el-dialog-mileage-id .el-button--danger,
+#el-dialog-bethistory-id .el-button--danger,
+#el-dialog-charge-id .el-button--danger,
+#el-dialog-discharge-id .el-button--danger,
+#el-message-box-id .el-button--danger {
+    color: #fff !important;
+    background-color: #f56c6c !important;
+    border-color: #f56c6c !important;
+}
+
+#el-dialog-mileage-id .el-button--danger:focus,
+#el-dialog-mileage-id .el-button--danger:hover,
+#el-dialog-bethistory-id .el-button--danger:focus,
+#el-dialog-bethistory-id .el-button--danger:hover,
+#el-dialog-charge-id .el-button--danger:focus,
+#el-dialog-charge-id .el-button--danger:hover,
+#el-dialog-discharge-id .el-button--danger:focus,
+#el-dialog-discharge-id .el-button--danger:hover,
+#el-message-box-id .el-button--danger:focus,
+#el-message-box-id .el-button--danger:hover {
+    background: #f78989 !important;
+    border-color: #f78989 !important;
+    color: #fff !important;
+}
+
+#el-dialog-mileage-id .el-button--mini,
+#el-dialog-mileage-id .el-button--small,
+#el-dialog-bethistory-id .el-button--mini,
+#el-dialog-bethistory-id .el-button--small,
+#el-dialog-charge-id .el-button--mini,
+#el-dialog-charge-id .el-button--small,
+#el-dialog-discharge-id .el-button--mini,
+#el-dialog-discharge-id .el-button--small,
+#el-message-box-id .el-button--mini,
+#el-message-box-id .el-button--small {
+    font-size: 12px !important;
+    border-radius: 3px !important;
+    padding: 9px 15px !important;
 }

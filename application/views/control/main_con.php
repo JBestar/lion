@@ -36,7 +36,7 @@
                                 <div class="cell">보유금액</div>
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_15_column_114     is-leaf">
-                                <div class="cell">마일리지</div>
+                                <div class="cell">포인트</div>
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_15_column_115     is-leaf">
                                 <div class="cell">회차한도</div>
@@ -92,7 +92,7 @@
                                     <div class="cell">보유금액</div>
                                 </th>
                                 <th colspan="1" rowspan="1" class="el-table_15_column_114     is-hidden is-leaf">
-                                    <div class="cell">마일리지</div>
+                                    <div class="cell">포인트</div>
                                 </th>
                                 <th colspan="1" rowspan="1" class="el-table_15_column_115     is-hidden is-leaf">
                                     <div class="cell">회차한도</div>

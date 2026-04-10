@@ -10,7 +10,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <link rel="stylesheet" href="<?php echo base_url('assets/css/all.css');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=2');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/index_new.css?v=1');?>">
-    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=5');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=19');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/default.css?v=1');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/layout.css?v=1');?>">
     <!-- <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=').time();?>"> -->
@@ -46,17 +46,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                 <li tabindex="2" class="el-menu-item" onclick="showRoundHistoryPage();">실시간배팅</li> 
                                 <li tabindex="3" class="el-menu-item" onclick="showChargeDlg();">충전</li> 
                                 <li tabindex="4" class="el-menu-item" onclick="showDischargeDlg();">환전</li> 
-                                <li tabindex="5" class="el-menu-item" onclick="showMileageDlg();">마일리지</li> 
-                                <li tabindex="6" class="el-menu-item" onclick="showNicknameDlg();">닉네임변경</li> 
+                                <li tabindex="5" class="el-menu-item" onclick="showMileageDlg();">포인트</li> 
                                 <li tabindex="7" class="el-menu-item" onclick="showWinHistoryPage();">당첨내역</li> 
-                                <li tabindex="8" class="el-menu-item" onclick="showBetHistoryPage();">구매내역</li> 
-                                <li tabindex="9" class="el-menu-item" onclick="showMessageDlg();"> 메시지</li> 
-                                <li tabindex="10" class="el-menu-item" onclick="showEmpInfoDlg();">정보변경</li> 
+                                <li tabindex="9" class="el-menu-item" onclick="showMessageDlg();">공지사항</li> 
                                 <li tabindex="11" class="el-menu-item"  onclick="logout();">로그아웃</li>
                             </ul>
                             <div class="pt-1 el-row">
                                 
-                                <div class="el-col el-col-14">
+                                <div class="el-col el-col-17">
                                     <div data-v-e74cd2d0="" class="pbg_info flex flex-wrap justify-center gap-1 lg:gap-5">
                                         <div data-v-e74cd2d0="" class="">
                                             <span id="hours">00</span><span class="pbg-clock-sep">:</span><span id="min">00</span><span class="pbg-clock-sep">:</span><span id="sec">00</span>
@@ -68,26 +65,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                         </div>
                                     </div>
                                 </div> 
-                                <div class="px-2 el-col el-col-5">
-                                    <div class="bet-customer pt-2">
-                                        <span id="bet-name-id"></span> 
-                                        <span value="0" id="bet-card-id"></span> 
-                                        <span value="0" id="bet-money-id"></span>
+                                <div class="px-2 el-col el-col-7">
+                                    <div class="bet-customer pt-2 header-user-summary-wrap">
+                                        <span id="header-user-summary">-</span>
+                                        <span id="bet-name-id" style="display:none;"></span>
+                                        <span value="0" id="bet-card-id" style="display:none;"></span>
+                                        <span value="0" id="bet-money-id" style="display:none;"></span>
                                     </div>
                                 </div> 
-                                <div class="el-col el-col-5">
-                                    <div class="balance el-row">
-                                        <div class="text-right el-col el-col-24">
-                                            <span id="emp-name-id" class="pr-5 headline yellow-text"></span> 
-                                            <i class="fas fa-chevron-left"></i>
-                                            P <span id="emp-money-id" class="balance-money"></span> 
-                                            <span id="balance-m-id">M 
-                                                <span  id="emp-mileage-id" class="balance-money" style="display:none;"></span>
-                                            </span>
-                                            <i class="fas fa-chevron-right"></i>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -100,8 +85,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                             <div class="el-row ">
                                 <div class="el-col el-col-10">
                                     <button class="game-button select" id="bet-pbg-id" onclick="selectGame(0);">PBG파워볼</button> 
-                                    <button class="game-button" id="bet-eos5-id" onclick="selectGame(2);">EOS파워볼</button> 
-                                    <button class="game-button" id="bet-coin5-id" onclick="selectGame(1);">코인파워볼</button>
+                                    <button class="game-button" id="bet-eos5-id" onclick="alert('준비중입니다.');return false;">카지노</button> 
+                                    <button class="game-button" id="bet-coin5-id" onclick="alert('준비중입니다.');return false;">슬롯</button>
                                 </div>
                                 <div class="el-col el-col-6" style="text-align:center;">
                                     <img src="/assets/image/game_eos5.png" id="game-img-id" name="eos_5"  style=" height: 60px; width: 200px; margin-top:10px" >
@@ -164,8 +149,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     </aside>
                     <div class="flex-1 min-w-0 senior-right relative">
 
-                            <div id="betLockMain" style="z-index: 99997; border-radius: 10px; position: absolute; width: 100%; height: 100%; background-color: rgb(0, 0, 0); opacity: 0.6; text-align: center; margin: 0px auto; display: none;"></div>
-                            <div id="betLockText" style="z-index: 99999; position: absolute; width: 100%; height: 100%; line-height: 750px; border: 0px; color: rgb(255, 255, 255); font-weight: bold; text-align: center; margin: 0px auto; font-size: 50px; display: none;"></div>
+                            <div id="betLockMain" style="z-index: 50; border-radius: 10px; position: absolute; width: 100%; height: 100%; background-color: rgb(0, 0, 0); opacity: 0.6; text-align: center; margin: 0px auto; display: none;"></div>
+                            <div id="betLockText" style="z-index: 51; position: absolute; width: 100%; height: 100%; line-height: 750px; border: 0px; color: rgb(255, 255, 255); font-weight: bold; text-align: center; margin: 0px auto; font-size: 50px; display: none;"></div>
 
                             <?php include __DIR__ . '/partials/senior_betting_panel.php'; ?>
 
@@ -308,7 +293,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                                     <div class="cell">배당</div>
                                                 </th>
                                                 <th colspan="1" rowspan="1" class="el-table_1_column_8     is-leaf">
-                                                    <div class="cell">마일리지</div>
+                                                    <div class="cell">포인트</div>
                                                 </th>
                                                 <th colspan="1" rowspan="1" class="el-table_1_column_9     is-leaf">
                                                     <div class="cell">적중금액</div>
@@ -370,7 +355,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                                     <div class="cell">배당</div>
                                                 </th>
                                                 <th colspan="1" rowspan="1" class="el-table_1_column_8     is-leaf">
-                                                    <div class="cell">마일리지</div>
+                                                    <div class="cell">포인트</div>
                                                 </th>
                                                 <th colspan="1" rowspan="1" class="el-table_1_column_9     is-leaf">
                                                     <div class="cell">적중금액</div>
@@ -718,7 +703,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                 <div class="el-dialog__wrapper" id="el-dialog-mileage-id" style="z-index: 2013; display:none;">
                     <div role="dialog" class="el-dialog" style="margin-top: 5vh; width: 50%;">
                         <div class="el-dialog__header">
-                            <span class="el-dialog__title">마일리지신청</span>
+                            <span class="el-dialog__title">포인트신청</span>
                             <button type="button" id="el-dialog-mileage-close-id" class="el-dialog__headerbtn">
                                 <i class="el-dialog__close fas fa-times"></i>
                             </button>
@@ -726,13 +711,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                         <div class="el-dialog__body">
                             <form class="el-form">
                                 <div class="el-form-item el-form-item--small">
-                                    <label class="el-form-item__label" style="width: 100px;">적립마일리지</label>
+                                    <label class="el-form-item__label" style="width: 100px;">적립포인트</label>
                                     <div class="el-form-item__content" id="el-dialog-mileage-amount-id" style="margin-left: 100px;">
                                         
                                     </div>
                                 </div> 
                                 <div class="el-form-item el-form-item--small">
-                                    <label class="el-form-item__label" style="width: 100px;">신청마일리지</label>
+                                    <label class="el-form-item__label" style="width: 100px;">신청포인트</label>
                                     <div class="el-form-item__content" style="margin-left: 100px;">
                                         <div class="el-row" style="margin-left: -2.5px; margin-right: -2.5px;">
                                             <div class="el-col el-col-21" style="padding-left: 2.5px; padding-right: 2.5px;">
@@ -774,7 +759,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                         <thead class="has-gutter">
                                             <tr class="">
                                                 <th colspan="1" rowspan="1" class="el-table_4_column_18     is-leaf">
-                                                    <div class="cell">전환마일리지</div>
+                                                    <div class="cell">전환포인트</div>
                                                 </th>
                                                 <th colspan="1" rowspan="1" class="el-table_4_column_19     is-leaf">
                                                     <div class="cell">처리일시</div>
@@ -794,7 +779,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                         <thead class="has-gutter">
                                             <tr class="">
                                                 <th colspan="1" rowspan="1" class="el-table_4_column_18     is-leaf">
-                                                    <div class="cell">전환마일리지</div>
+                                                    <div class="cell">전환포인트</div>
                                                 </th>
                                                 <th colspan="1" rowspan="1" class="el-table_4_column_19     is-leaf">
                                                     <div class="cell">처리일시</div>

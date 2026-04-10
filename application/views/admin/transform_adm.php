@@ -37,7 +37,7 @@
                             <th colspan="1" rowspan="1" class="el-table_31_column_215 is-leaf"><div class="cell">직충전금액</div></th>
                             <th colspan="1" rowspan="1" class="el-table_31_column_216 is-leaf"><div class="cell">충전신청금액</div></th>
                             <th colspan="1" rowspan="1" class="el-table_31_column_217 is-leaf"><div class="cell">환전신청금액</div></th>
-                            <th colspan="1" rowspan="1" class="el-table_31_column_218 is-leaf"><div class="cell">마일리지 전환금액</div></th>
+                            <th colspan="1" rowspan="1" class="el-table_31_column_218 is-leaf"><div class="cell">포인트 전환금액</div></th>
                             <th colspan="1" rowspan="1" class="el-table_31_column_219 is-leaf"><div class="cell">차익</div></th>
                             <th class="gutter" style="width: 0px; display: none;"></th>
                         </tr>
@@ -61,7 +61,7 @@
                             <th colspan="1" rowspan="1" class="el-table_31_column_215 is-leaf"><div class="cell">직충전금액</div></th>
                             <th colspan="1" rowspan="1" class="el-table_31_column_216 is-leaf"><div class="cell">충전신청금액</div></th>
                             <th colspan="1" rowspan="1" class="el-table_31_column_217 is-leaf"><div class="cell">환전신청금액</div></th>
-                            <th colspan="1" rowspan="1" class="el-table_31_column_218 is-leaf"><div class="cell">마일리지 전환금액</div></th>
+                            <th colspan="1" rowspan="1" class="el-table_31_column_218 is-leaf"><div class="cell">포인트 전환금액</div></th>
                             <th colspan="1" rowspan="1" class="el-table_31_column_219 is-leaf"><div class="cell">차익</div></th>
                         </tr>
                     </thead>
@@ -126,7 +126,7 @@
                                         <th colspan="1" rowspan="1" class="el-table_4_column_27 is-leaf"><div class="cell">직충전금액</div></th>
                                         <th colspan="1" rowspan="1" class="el-table_4_column_28 is-leaf"><div class="cell">충전신청금액</div></th>
                                         <th colspan="1" rowspan="1" class="el-table_4_column_29 is-leaf"><div class="cell">환전신청금액</div></th>
-                                        <th colspan="1" rowspan="1" class="el-table_4_column_30 is-leaf"><div class="cell">마일리지 전환금액</div></th>
+                                        <th colspan="1" rowspan="1" class="el-table_4_column_30 is-leaf"><div class="cell">포인트 전환금액</div></th>
                                         <th colspan="1" rowspan="1" class="el-table_4_column_31 is-leaf"><div class="cell">신청일자</div></th>
                                         
                                     </tr>

@@ -60,7 +60,7 @@ function pageLoop() {
                 tHtml += "<span style=\"float: left;\">";
                 tHtml += arrEmp[idx].mb_uid + "</span>";
                 tHtml += "<span class=\"item-span2\">";
-                tHtml += arrEmp[idx].mb_nickname + "</span></li>";
+                tHtml += arrEmp[idx].mb_uid + "</span></li>";
 
 
             }

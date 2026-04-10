@@ -430,8 +430,9 @@ class Api extends CI_Controller {
 	
 	public function bet_cancel(){
 
-		$jsonData = $_REQUEST['json_'];
-		$arrReqData = json_decode($jsonData, true);
+		$logHead = "Api.bet_cancel ";
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arrReqData = is_string($jsonData) ? json_decode($jsonData, true) : null;
 		
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) {
@@ -439,27 +440,64 @@ class Api extends CI_Controller {
 			$this->load->model('confgame_model');
 			$this->load->model('moneyhistory_model');
 			$this->load->model('pbbet_model');
+			$this->load->model('pbround_model');
 
 			$strUid = $this->sess_model->getUserId($nLogId);			
 			$objUser = $this->member_model->getInfoByUid($strUid);
-			$objConfig = $this->confgame_model->getByIndex($arrReqData['game']);
+			$reqGame = is_array($arrReqData) && array_key_exists('game', $arrReqData) ? $arrReqData['game'] : null;
+			$reqFid = is_array($arrReqData) && array_key_exists('fid', $arrReqData) ? $arrReqData['fid'] : null;
+			writeLog($logHead . "start uid=" . $strUid . " l=" . $nLogId . " game=" . var_export($reqGame, true) . " fid=" . var_export($reqFid, true));
+
+			$objConfig = is_array($arrReqData) ? $this->confgame_model->getByIndex($arrReqData['game']) : null;
 			$iResult = 0;
-			if(is_null($objConfig) || !array_key_exists('fid', $arrReqData) || !array_key_exists('game', $arrReqData)){
+			$sFailReason = "";
+			if(!is_array($arrReqData) || !array_key_exists('fid', $arrReqData) || !array_key_exists('game', $arrReqData)){
 				$iResult = 0;
+				$sFailReason = "bad_request_json_or_missing_keys";
+				writeLog($logHead . "FAIL " . $sFailReason . " json_decode_ok=" . (is_array($arrReqData) ? '1' : '0'));
+			} else if(is_null($objConfig)){
+				$iResult = 0;
+				$sFailReason = "confgame_null_for_game";
+				writeLog($logHead . "FAIL " . $sFailReason . " game=" . var_export($arrReqData['game'], true));
 			} else{
 				$arrRoundData = getPballRoundTimes($objConfig);
+				$nGameId = intval($arrReqData['game']);
+				$nCurrentRoundId = 0;
+				$arrRound = $this->pbround_model->gets($nGameId, 1);
+				if ($nGameId == GAME_POWERBALL && count($arrRound) > 0) {
+					calcRoundId($arrRound[0], $arrRoundData);
+					$nCurrentRoundId = isset($arrRoundData['round_id']) ? intval($arrRoundData['round_id']) : 0;
+				} else if ($nGameId == GAME_POWERBALL) {
+					$nCurrentRoundId = 10001;
+				} else if (count($arrRound) > 0) {
+					$nCurrentRoundId = intval($arrRound[0]->round_fid) + 1;
+				} else {
+					$nCurrentRoundId = 10001;
+				}
+				writeLog($logHead . "round_ctx round_no=" . (isset($arrRoundData['round_no']) ? $arrRoundData['round_no'] : '') . " round_id_computed=" . $nCurrentRoundId . " round_start=" . (isset($arrRoundData['round_start']) ? $arrRoundData['round_start'] : '') . " round_bet_end=" . (isset($arrRoundData['round_bet_end']) ? $arrRoundData['round_bet_end'] : '') . " enableBetTime=" . (isEnableBetTime($arrRoundData) ? '1' : '0'));
 
 				$objBet = $this->pbbet_model->getOrderById($strUid, $arrReqData['fid']);
 				if(is_null($objBet) || $objBet->bet_mb_uid !== $strUid ){
 					$iResult = 2;		//베팅아이디 오류
-				} else if($objBet->bet_state != BET_WAIT){				//정산완료
-					$iResult = 1;
-				} else if($objBet->bet_round_no != $arrRoundData['round_no']){
-					$iResult = 3;		//베팅아이디 오류
-				} else if($objBet->bet_time < $arrRoundData['round_start'] || $objBet->bet_time > $arrRoundData['round_bet_end']){
-					$iResult = 4;		//베팅아이디 오류
+					$sFailReason = is_null($objBet) ? "bet_row_null" : "bet_mb_uid_mismatch";
+					writeLog($logHead . "FAIL iResult=2 " . $sFailReason . " bet_mb_uid=" . (is_object($objBet) && isset($objBet->bet_mb_uid) ? $objBet->bet_mb_uid : 'null'));
+				} else if($objBet->bet_state != BET_WAIT){				// 이미 정산/취소 등 — 취소 불가
+					$iResult = 6;
+					$sFailReason = "bet_state_not_wait";
+					writeLog($logHead . "FAIL iResult=6 bet_state=" . (isset($objBet->bet_state) ? $objBet->bet_state : '') . " need=" . BET_WAIT);
+				} else if($nCurrentRoundId <= 0){
+					$iResult = 0;
+					$sFailReason = "current_round_id_unresolved";
+					writeLog($logHead . "FAIL iResult=0 cannot_resolve_current_round_id game=" . $nGameId);
+				} else if(intval($objBet->bet_round_fid) !== $nCurrentRoundId){
+					$iResult = 3;
+					$sFailReason = "bet_round_fid_mismatch";
+					writeLog($logHead . "FAIL iResult=3 bet_round_fid=" . (isset($objBet->bet_round_fid) ? $objBet->bet_round_fid : '') . " current_round_id=" . $nCurrentRoundId);
 				} else if(!isEnableBetTime($arrRoundData)){
 					$iResult = 5;		//베팅 취소 불가능
+					$sFailReason = "isEnableBetTime_false";
+					$tmCurrent = date("Y-m-d H:i:s", time());
+					writeLog($logHead . "FAIL iResult=5 now=" . $tmCurrent . " round_start=" . (isset($arrRoundData['round_start']) ? $arrRoundData['round_start'] : '') . " round_bet_end=" . (isset($arrRoundData['round_bet_end']) ? $arrRoundData['round_bet_end'] : ''));
 				} else {
 					if($this->pbbet_model->deleteByFid($objBet->bet_fid)){
 						if( $objBet->bet_money > 0 && $this->member_model->moneyProc($objUser, $objBet->bet_money, 0-$objBet->bet_empl_amount)){
@@ -470,6 +508,11 @@ class Api extends CI_Controller {
 							$this->moneyhistory_model->registerCancelBet($objUser, $objBet);
 						}
 						$iResult = 1;		
+						writeLog($logHead . "OK bet_fid=" . $objBet->bet_fid . " money=" . $objBet->bet_money);
+					} else {
+						$iResult = 7;
+						$sFailReason = "deleteByFid_failed";
+						writeLog($logHead . "FAIL iResult=7 deleteByFid returned false bet_fid=" . (isset($objBet->bet_fid) ? $objBet->bet_fid : ''));
 					}
 				}
 			}
@@ -478,18 +521,21 @@ class Api extends CI_Controller {
 
 			if($iResult == 1){
 				$arrResult['status'] = "success";	
+				writeLog($logHead . "response success");
 			} else if($iResult == 5){
 				$arrResult['status'] = "fail";	
 				$arrResult['msg'] = "베팅을 취소할수 없습니다.";	
+				writeLog($logHead . "response fail msg=cannot_cancel_now reason=" . $sFailReason);
 			} else {
 				$arrResult['status'] = "fail";	
 				$arrResult['msg'] = "거절되었습니다.";	
+				writeLog($logHead . "response fail msg=generic_denied iResult=" . $iResult . " reason=" . $sFailReason);
 			}
 			echo json_encode($arrResult);	
 
 		}
 		else{//logout		
-			
+			writeLog($logHead . "FAIL not_logged_in_or_bad_session l=" . var_export($nLogId, true));
 			$arrResult['status'] = "logout";
 			echo json_encode($arrResult);	
 		}

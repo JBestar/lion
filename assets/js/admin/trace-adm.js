@@ -13,7 +13,7 @@
                 tHtml += arrTrace[idx].log_mb_uid;
                 tHtml += "</div></td>";
                 tHtml += "<td><div class=\"cell\">";
-                tHtml += arrTrace[idx].mb_nickname;
+                tHtml += arrTrace[idx].log_mb_uid;
                 tHtml += "</div></td>";
                 tHtml += "<td><div class=\"cell\">";
                 tHtml += "::ffff:"+arrTrace[idx].log_ip;
