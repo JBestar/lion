@@ -18,6 +18,10 @@ var m_bRoundResultSyncedOnce = false;
 /** 추첨결과(시니어 패널) 지연 원인 분석: 브라우저 콘솔에서 `[senior-result]` 로 필터 */
 var m_tmLastPbcurrentgameReq = 0;
 var m_tmLastPbroundresultReq = 0;
+/** PBG: DB에 round_state=1 반영 전 재시도 */
+var m_pbRoundResultRetryCount = 0;
+var m_pbRoundResultRetryTimer = null;
+var m_pbRoundResultRetryMax = 30;
 
 function logSeniorResultDiag(phase, detail) {
     try {
@@ -629,6 +633,14 @@ function setCurrentRound(objRound) {
     var gameChanged = (prevGame !== gid);
     var roundNoChanged = (prevRoundNo !== nextRoundNo);
 
+    if (roundNoChanged || gameChanged) {
+        m_pbRoundResultRetryCount = 0;
+        if (m_pbRoundResultRetryTimer) {
+            clearTimeout(m_pbRoundResultRetryTimer);
+            m_pbRoundResultRetryTimer = null;
+        }
+    }
+
     m_objRound.round_no = objRound.round_no;
     m_objRound.round_id = objRound.round_id;
     m_objRound.round_current = new Date(objRound.round_current).getTime();
@@ -636,6 +648,12 @@ function setCurrentRound(objRound) {
     m_objRound.round_end = new Date(objRound.round_end).getTime();
     m_objRound.round_betend = new Date(objRound.round_bet_end).getTime();
     m_objRound.game = gid;
+
+    if (objRound.last_round_fid != null && objRound.last_round_fid !== "") {
+        var olf = objRound.last_round_num != null && objRound.last_round_num !== "" ? objRound.last_round_num : "";
+        var tOldLabel = formatRoundDisplay(objRound.last_round_fid, olf, "회차");
+        if (tOldLabel && tOldLabel !== "-") $("#old_round").text(tOldLabel);
+    }
 
     var needInitialBuyInfo = !m_bRoundResultSyncedOnce;
     if (roundNoChanged || gameChanged || needInitialBuyInfo) {
@@ -704,6 +722,24 @@ function formatRoundDisplay(roundFid, roundNo, suffix) {
     return "-";
 }
 
+/**
+ * 직전(마감) 회차 라벨 — cur_round(m_objRound)보다 누적 id는 -1, 일회차는 1이면 288로 감싸기.
+ * fillSeniorRoundBetSummary의 targets 계산과 동일 규칙.
+ */
+function formatPreviousRoundLabelFromCurrent() {
+    if (!m_objRound) return "-";
+    var startFid = m_objRound.round_id != null && m_objRound.round_id !== "" ? parseInt(m_objRound.round_id, 10) : 0;
+    var startNo = m_objRound.round_no != null && m_objRound.round_no !== "" ? parseInt(m_objRound.round_no, 10) : 0;
+    if (isNaN(startFid)) startFid = 0;
+    if (isNaN(startNo)) startNo = 0;
+    var step = 1;
+    var fidN = startFid > 0 ? (startFid - step) : 0;
+    var rnN = startNo > 0 ? (startNo - step) : 0;
+    while (rnN <= 0 && startNo > 0) rnN += 288;
+    if (fidN < 1 && rnN < 1) return "-";
+    return formatRoundDisplay(fidN, rnN, "회차");
+}
+
 function seniorCycleHtml(label, cls, dataV) {
     var extra = cls ? " " + cls : "";
     return '<div data-v-' + dataV + '="" class="cycle' + extra + '">' + label + "</div>";
@@ -725,10 +761,14 @@ function fillSeniorRoundLabel(objRound) {
         var fid = objRound.round_fid != null ? objRound.round_fid : (objRound.round_id != null ? objRound.round_id : "");
         var rn = objRound.round_num != null && objRound.round_num !== "" ? objRound.round_num : objRound.round_no;
         t = formatRoundDisplay(fid, rn, "회차");
+        var pf = parseInt(fid, 10);
+        var curId = m_objRound && m_objRound.round_id != null && m_objRound.round_id !== "" ? parseInt(m_objRound.round_id, 10) : NaN;
+        if (!isNaN(pf) && !isNaN(curId) && pf === curId) {
+            t = "";
+        }
     }
     if (!t || t === "-") {
-        // 결과 API가 비었을 때 폴백: 진행 회차 기준
-        t = formatRoundDisplay(m_objRound ? m_objRound.round_id : "", m_objRound ? m_objRound.round_no : "", "회차");
+        t = formatPreviousRoundLabelFromCurrent();
     }
     if (t && t !== "-") $("#old_round").text(t);
 }
@@ -1362,6 +1402,10 @@ function requestCurrentRound() {
     });
 }
 
+function pbRoundResultIsComplete(r) {
+    return r != null && parseInt(r.round_state, 10) === 1;
+}
+
 function requestRoundResult() {
     var nRoundId = $("#buy-info-round-id").text();
     if (nRoundId.length < 1) return;
@@ -1400,6 +1444,23 @@ function requestRoundResult() {
                 has_draw_bits: r ? seniorRoundHasDrawResults(r) : false
             });
             if (jResult.status == "success") {
+                var gid = getGameId();
+                if (gid === 0 && !pbRoundResultIsComplete(r) && m_pbRoundResultRetryCount < m_pbRoundResultRetryMax) {
+                    m_pbRoundResultRetryCount++;
+                    if (m_pbRoundResultRetryTimer) {
+                        clearTimeout(m_pbRoundResultRetryTimer);
+                    }
+                    m_pbRoundResultRetryTimer = setTimeout(function() {
+                        m_pbRoundResultRetryTimer = null;
+                        requestRoundResult();
+                    }, 1500);
+                } else {
+                    m_pbRoundResultRetryCount = 0;
+                    if (m_pbRoundResultRetryTimer) {
+                        clearTimeout(m_pbRoundResultRetryTimer);
+                        m_pbRoundResultRetryTimer = null;
+                    }
+                }
                 showRoundResult(jResult.round, jResult.bets);
             } else if (jResult.status == "logout") {
                 location.reload();
@@ -1975,10 +2036,9 @@ function showTime() {
         nRemainMin = Math.floor((nRemainTm % (1000 * 60 * 60)) / (1000 * 60));
         nRemainSec = Math.floor((nRemainTm % (1000 * 60)) / 1000);
 
-        if (!m_bShowResult && m_objRound.round_current > m_objRound.round_start + 30000 &&
-            m_objRound.round_current < m_objRound.round_start + 60000) {
+        if (!m_bShowResult && m_objRound.round_current >= m_objRound.round_start) {
             m_bShowResult = true;
-            setRoundResult(getLastCompletedRoundKey(), "timer_mid_round_30_60s");
+            setRoundResult(getLastCompletedRoundKey(), "timer_after_round_start");
         }
 
         if (m_elemCountTm) m_elemCountTm.innerHTML = fullNumber(nRemainMin) + ":" + fullNumber(nRemainSec);

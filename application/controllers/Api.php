@@ -206,6 +206,7 @@ class Api extends CI_Controller {
 		$t0 = microtime(true);
 		$logHead = 'Api.pbcurrentgame ';
 		writeLog($logHead . 'start');
+		logTimezoneDiagnostic($logHead, $this);
 
 		$jsonData = $_REQUEST['json_'];
 		$arrRaData = json_decode($jsonData, true);
@@ -225,25 +226,37 @@ class Api extends CI_Controller {
 				$arrResult['status'] = "fail";
 			} else {				
 
-				$arrRoundData = getPballRoundTimes($objConfigPb);
 				if($gameId == GAME_POWERBALL){
-					
 					$arrRound = $this->pbround_model->gets($gameId, 1);
-					if(count($arrRound) > 0){	
+					if(count($arrRound) > 0){
+						$arrRoundData = pballRoundTimesAfterLastRow($arrRound[0], $objConfigPb);
 						calcRoundId($arrRound[0], $arrRoundData);
-					} else $arrRoundData['round_id'] = 10001;		
-				} else if($gameId == GAME_COIN_5){
+						pballMergeSlotTimesFromClock($arrRoundData, $objConfigPb);
+						$arrRoundData['last_round_fid'] = (int) $arrRound[0]->round_fid;
+						$arrRoundData['last_round_num'] = (int) $arrRound[0]->round_num;
+					} else {
+						$arrRoundData = getPballRoundTimes($objConfigPb);
+						$arrRoundData['round_id'] = 10001;
+					}
+				} else {
+				$arrRoundData = getPballRoundTimes($objConfigPb);
+				if($gameId == GAME_COIN_5){
 					
 					$arrRound = $this->pbround_model->gets($gameId, 1);
 					if(count($arrRound) > 0){	
 						$arrRoundData['round_id'] = $arrRound[0]->round_fid + 1;
+						$arrRoundData['last_round_fid'] = (int) $arrRound[0]->round_fid;
+						$arrRoundData['last_round_num'] = (int) $arrRound[0]->round_num;
 					} else $arrRoundData['round_id'] = 10001;	
 				} else if($gameId == GAME_EOS_5){
 					
 					$arrRound = $this->pbround_model->gets($gameId, 1);
 					if(count($arrRound) > 0){	
 						$arrRoundData['round_id'] = $arrRound[0]->round_fid + 1;
+						$arrRoundData['last_round_fid'] = (int) $arrRound[0]->round_fid;
+						$arrRoundData['last_round_num'] = (int) $arrRound[0]->round_num;
 					} else $arrRoundData['round_id'] = 10001;	
+				}
 				}
 				
 				$arrResult['data'] = $arrRoundData;
@@ -300,22 +313,21 @@ class Api extends CI_Controller {
 			if($gameId == GAME_POWERBALL){							//파워볼 일회차 배팅
 				$this->load->model('pbbet_model');
 				
-				$arrRoundData = getPballRoundInfo($gameId);					//계산된 회차결과
-
-				$arrRoundInfo = $this->pbround_model->gets($gameId, 1);		//등록된 회차
+				$objConfig = $this->confgame_model->getByIndex($gameId);
+				$arrRoundInfo = $this->pbround_model->gets($gameId, 1);
 				$iRoundState = 0;
-				
-				if(count($arrRoundInfo)>0 && $arrRoundData['round_no'] == $arrBetData['roundno']){
+				if (count($arrRoundInfo) > 0 && $objConfig) {
+					$arrRoundData = pballRoundTimesAfterLastRow($arrRoundInfo[0], $objConfig);
 					$iRoundState = calcRoundId($arrRoundInfo[0], $arrRoundData);
+					pballMergeSlotTimesFromClock($arrRoundData, $objConfig);
 				}
-				
-				if($iRoundState > 0){
+
+				if($iRoundState > 0 && isset($arrRoundData['round_no']) && $arrRoundData['round_no'] == $arrBetData['roundno']){
 					$arrBetData['roundid'] = $arrRoundData['round_id'];
 					$arrBetData['roundno'] = $arrRoundData['round_no'] ;
 					$arrBetData['round_date'] = $arrRoundData['round_date'] ;
 					
 					$arrBetStatist = $this->pbbet_model->getBetStatist($objUser, $arrRoundData, $gameId);
-					$objConfig = $this->confgame_model->getByIndex($gameId);
 					$iResult = isEnablePbBet($arrBetData, $objUser, $objConfig, $arrRoundData, $arrBetStatist);
 					writeLog("Betting iResult=".$iResult);
 
@@ -466,19 +478,24 @@ class Api extends CI_Controller {
 				$sFailReason = "confgame_null_for_game";
 				writeLog($logHead . "FAIL " . $sFailReason . " game=" . var_export($arrReqData['game'], true));
 			} else{
-				$arrRoundData = getPballRoundTimes($objConfig);
 				$nGameId = intval($arrReqData['game']);
 				$nCurrentRoundId = 0;
 				$arrRound = $this->pbround_model->gets($nGameId, 1);
 				if ($nGameId == GAME_POWERBALL && count($arrRound) > 0) {
+					$arrRoundData = pballRoundTimesAfterLastRow($arrRound[0], $objConfig);
 					calcRoundId($arrRound[0], $arrRoundData);
+					pballMergeSlotTimesFromClock($arrRoundData, $objConfig);
 					$nCurrentRoundId = isset($arrRoundData['round_id']) ? intval($arrRoundData['round_id']) : 0;
 				} else if ($nGameId == GAME_POWERBALL) {
+					$arrRoundData = getPballRoundTimes($objConfig);
 					$nCurrentRoundId = 10001;
-				} else if (count($arrRound) > 0) {
-					$nCurrentRoundId = intval($arrRound[0]->round_fid) + 1;
 				} else {
-					$nCurrentRoundId = 10001;
+					$arrRoundData = getPballRoundTimes($objConfig);
+					if (count($arrRound) > 0) {
+						$nCurrentRoundId = intval($arrRound[0]->round_fid) + 1;
+					} else {
+						$nCurrentRoundId = 10001;
+					}
 				}
 				writeLog($logHead . "round_ctx round_no=" . (isset($arrRoundData['round_no']) ? $arrRoundData['round_no'] : '') . " round_id_computed=" . $nCurrentRoundId . " round_start=" . (isset($arrRoundData['round_start']) ? $arrRoundData['round_start'] : '') . " round_bet_end=" . (isset($arrRoundData['round_bet_end']) ? $arrRoundData['round_bet_end'] : '') . " enableBetTime=" . (isEnableBetTime($arrRoundData) ? '1' : '0'));
 
@@ -609,6 +626,7 @@ class Api extends CI_Controller {
 		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
 		$jsonLen = is_string($jsonData) ? strlen($jsonData) : 0;
 		writeLog($logHead . 'start json_len=' . $jsonLen);
+		logTimezoneDiagnostic($logHead, $this);
 
 		$arrReqData = is_string($jsonData) ? json_decode($jsonData, true) : null;
 		if (!is_array($arrReqData)) {

@@ -86,6 +86,13 @@ class CI_DB_mysqli_driver extends CI_DB {
 	 */
 	public $stricton;
 
+	/**
+	 * MySQL session time_zone (e.g. '+09:00' or 'Asia/Seoul') — set from application/config/database.php
+	 *
+	 * @var	string
+	 */
+	public $time_zone = '';
+
 	// --------------------------------------------------------------------
 
 	/**
@@ -213,6 +220,16 @@ class CI_DB_mysqli_driver extends CI_DB {
 				$message = 'MySQLi was configured for an SSL connection, but got an unencrypted connection instead!';
 				log_message('error', $message);
 				return ($this->db_debug) ? $this->display_error($message, '', TRUE) : FALSE;
+			}
+
+			// Optional: align MySQL NOW() with PHP (see application/config/database.php time_zone)
+			if (isset($this->time_zone) && is_string($this->time_zone) && $this->time_zone !== '')
+			{
+				$tz = $this->time_zone;
+				if (preg_match('/^[+-]\d{1,2}:\d{2}$/', $tz) || preg_match('/^[A-Za-z_]+\/[A-Za-z_]+$/', $tz))
+				{
+					$this->_mysqli->query("SET time_zone = '".$this->_mysqli->real_escape_string($tz)."'");
+				}
 			}
 
 			return $this->_mysqli;

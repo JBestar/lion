@@ -77,6 +77,13 @@ $username ="root";
 $password ="startend1@";
 $database ="lion";
 
+/*
+| MySQL @@session.time_zone — PHP(autoload)는 Asia/Seoul인데 MySQL이 SYSTEM(예: OS=중국 +8)이면
+| NOW()·날짜 경계가 PHP와 1시간 어긋납니다. 빈 문자열이면 드라이버에서 SET 하지 않고 MySQL 기본을 씁니다.
+| 오프셋은 '+09:00' 권장(타임존 테이블 없이 동작). 이름 존은 MySQL에 zone 테이블 로드 시에만 'Asia/Seoul' 가능.
+*/
+$db_time_zone = '+09:00';
+
 $db['default'] = array(
 	'dsn'	=> '',
 	'hostname' => $hostname,
@@ -95,6 +102,7 @@ $db['default'] = array(
 	'encrypt' => FALSE,
 	'compress' => FALSE,
 	'stricton' => FALSE,
+	'time_zone' => $db_time_zone,
 	'failover' => array(),
 	'save_queries' => TRUE
 );

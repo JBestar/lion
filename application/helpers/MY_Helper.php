@@ -114,6 +114,66 @@
       return $arrRoundInfo;
     }
 
+    /**
+     * PBG: 일회차·날짜·슬롯시각을 "DB에 저장된 최신 회차"의 다음 회차 기준으로 맞춘다.
+     * (시간만 보고 만든 round_no가 파워볼 서버/누계 round_id보다 일회차만 1 작게 나오던 문제 대응)
+     */
+    function pballRoundTimesAfterLastRow($objLastRound, $objConfPb) {
+      date_default_timezone_set('Asia/Seoul');
+      $tmNow = time();
+
+      $ln = (int) $objLastRound->round_num;
+      $rd = $objLastRound->round_date;
+      $nextNum = $ln + 1;
+      $nextDate = $rd;
+      if ($nextNum > 288) {
+        $nextNum = 1;
+        $nextDate = date('Y-m-d', strtotime($rd . ' +1 day'));
+      }
+
+      $arrRoundInfo['round_no'] = $nextNum;
+      $arrRoundInfo['round_date'] = $nextDate;
+
+      $nSumMinutes = pballRoundEndMinutesFromMidnight($nextNum);
+      $nHour = $nSumMinutes / 60;
+      $nHour = floor($nHour);
+      $nMinute = $nSumMinutes % 60;
+
+      $tmRoundCurrent = date('Y-m-d H:i:s', $tmNow);
+      $arrRoundInfo['round_current'] = $tmRoundCurrent;
+
+      $strRoundEnd = $nextDate . ' ' . $nHour . ':' . $nMinute . ':' . '0';
+      $tmRoundEnd = strtotime($strRoundEnd);
+      $arrRoundInfo['round_end'] = date('Y-m-d H:i:s', $tmRoundEnd);
+
+      $tmRoundStart = strtotime('-5 minutes', $tmRoundEnd);
+      $arrRoundInfo['round_start'] = date('Y-m-d H:i:s', $tmRoundStart);
+
+      $tmBetEnd = 0;
+      if ($objConfPb->game_bet_permit != 1) {
+        $tmBetEnd = $tmRoundStart;
+      } elseif ($objConfPb->game_time_countdown >= 20 && $objConfPb->game_time_countdown <= 250) {
+        $tmBetEnd = strtotime('-' . $objConfPb->game_time_countdown . ' seconds', $tmRoundEnd);
+      } else {
+        $tmBetEnd = strtotime('-1 minutes', $tmRoundEnd);
+      }
+      $arrRoundInfo['round_bet_end'] = date('Y-m-d H:i:s', $tmBetEnd);
+
+      return $arrRoundInfo;
+    }
+
+    /**
+     * round_no/round_date/round_id는 DB 연동 값을 유지하고,
+     * 카운트다운(betcloserest)용 시각만 현재 시각 기준 5분 슬롯(getPballRoundTimes)으로 맞춘다.
+     */
+    function pballMergeSlotTimesFromClock(&$arrRoundData, $objConfPb) {
+      $slot = getPballRoundTimes($objConfPb);
+      $arrRoundData['round_current'] = $slot['round_current'];
+      $arrRoundData['round_start'] = $slot['round_start'];
+      $arrRoundData['round_end'] = $slot['round_end'];
+      $arrRoundData['round_bet_end'] = $slot['round_bet_end'];
+    }
+
     
 
     //회차번호로부터 회차시작시간과 마감시간, 배팅초과시간 계산하는 함수-파워볼, 파워사다리
@@ -292,28 +352,17 @@
     }
 
 
+    /**
+     * 파워볼: round_id(클라이언트 누적 회차) = DB에 저장된 최신 round_pball 행의 round_fid + 1.
+     * (시간 슬롯과 round_num 차이로 round_id가 최신 회차와 같아지던 문제를 제거)
+     */
     function calcRoundId($objLastRound, &$arrRoundData) {
-      $iResult = 0;   //0:비정상 1:정상
-      if($objLastRound->round_date == $arrRoundData['round_date']){
-        // 화면/베팅 round_id는 외부 회차(times)와 일치하도록 round_fid 기준으로 계산한다.
-        $arrRoundData['round_id'] = $objLastRound->round_fid + $arrRoundData['round_no'] - $objLastRound->round_num;
-        $iResult = 1;
-        
-      } else if($objLastRound->round_date < $arrRoundData['round_date']){
-        
-        $date1 = date_create($objLastRound->round_date);
-        $date2 = date_create($arrRoundData['round_date']);
-        
-        $dtDiff = date_diff($date1, $date2);
-        $nRoundDiff = $dtDiff->days*288 + $arrRoundData['round_no'] - $objLastRound->round_num;
-        $arrRoundData['round_id'] = $objLastRound->round_fid + $nRoundDiff;
-        if($nRoundDiff > 0 && $nRoundDiff < 300)
-          $iResult = 1;
-        
-      } else {
-        $arrRoundData['round_id'] = $objLastRound->round_fid + 1;
+      if (is_null($objLastRound) || ! isset($objLastRound->round_fid)) {
+        return 0;
       }
-      return $iResult;
+      $arrRoundData['round_id'] = (int) $objLastRound->round_fid + 1;
+
+      return 1;
     }
 
 
@@ -385,6 +434,34 @@
   
       fputs($fLog, $tContent);
       fclose($fLog);
+  }
+
+  /**
+   * PHP·MySQL 시간대 진단 (로컬 OS vs 서버·DB 불일치 확인용)
+   * @param string $prefix 예: 'Api.pbcurrentgame '
+   * @param object|null $ci CI_Controller — 전달 시 MySQL session/global TZ 및 NOW() 기록
+   */
+  function logTimezoneDiagnostic($prefix, $ci = null) {
+      if (!LOG_WRITE) {
+          return;
+      }
+      $phpTz = function_exists('date_default_timezone_get') ? date_default_timezone_get() : '';
+      $phpNow = date('Y-m-d H:i:s');
+      $phpIso = date('c');
+      $msg = $prefix . 'tz_diag php_tz=' . $phpTz . ' php_now=' . $phpNow . ' php_iso=' . $phpIso;
+      if ($ci !== null && isset($ci->db)) {
+          $q = $ci->db->query("SELECT @@session.time_zone AS stz, @@global.time_zone AS gtz, NOW() AS mysql_now, UTC_TIMESTAMP() AS mysql_utc");
+          if ($q && $q->num_rows() > 0) {
+              $r = $q->row_array();
+              $msg .= ' mysql_session_tz=' . (isset($r['stz']) ? $r['stz'] : '')
+                  . ' mysql_global_tz=' . (isset($r['gtz']) ? $r['gtz'] : '')
+                  . ' mysql_now=' . (isset($r['mysql_now']) ? $r['mysql_now'] : '')
+                  . ' mysql_utc=' . (isset($r['mysql_utc']) ? $r['mysql_utc'] : '');
+          } else {
+              $msg .= ' mysql_tz_query=FAIL';
+          }
+      }
+      writeLog($msg);
   }
 
   /** 로그인 요청 JSON 파싱 실패 (비밀번호 미기록) */
