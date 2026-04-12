@@ -203,6 +203,10 @@ class Api extends CI_Controller {
 	}
 	//현재 게임회차, 시간정보를 보내주는 함수
 	public function pbcurrentgame(){ 
+		$t0 = microtime(true);
+		$logHead = 'Api.pbcurrentgame ';
+		writeLog($logHead . 'start');
+
 		$jsonData = $_REQUEST['json_'];
 		$arrRaData = json_decode($jsonData, true);
 
@@ -246,9 +250,11 @@ class Api extends CI_Controller {
 				$arrResult['status'] = "success";
 			}
 			
+			writeLog($logHead . 'done_ms=' . (int) round((microtime(true) - $t0) * 1000) . ' status=' . (isset($arrResult['status']) ? $arrResult['status'] : '') . ' game=' . $gameId);
 			echo json_encode($arrResult);
 		}
 		else{
+			writeLog($logHead . 'done_ms=' . (int) round((microtime(true) - $t0) * 1000) . ' status=logout');
 			$arrResult['status'] = "logout";
 			echo json_encode($arrResult);	
 		}
@@ -598,6 +604,7 @@ class Api extends CI_Controller {
 	}
 
 	public function pbroundresult(){
+		$tPbRoundResult0 = microtime(true);
 		$logHead = 'Api.pbroundresult ';
 		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
 		$jsonLen = is_string($jsonData) ? strlen($jsonData) : 0;
@@ -708,12 +715,18 @@ class Api extends CI_Controller {
 			$objResult->bets = $arrBetData;		
 			$objResult->status = "success";
 
-			writeLog($logHead . 'response round_is_null=' . (is_null($objRound) ? '1' : '0') . ' bets_count=' . (is_array($arrBetData) ? count($arrBetData) : 0));
+			$rs = 'n/a';
+			$rfid = 'n/a';
+			if (!is_null($objRound)) {
+				$rs = isset($objRound->round_state) ? (string) $objRound->round_state : 'n/a';
+				$rfid = isset($objRound->round_fid) ? (string) $objRound->round_fid : 'n/a';
+			}
+			writeLog($logHead . 'response round_is_null=' . (is_null($objRound) ? '1' : '0') . ' round_state=' . $rs . ' round_fid=' . $rfid . ' bets_count=' . (is_array($arrBetData) ? count($arrBetData) : 0) . ' done_ms=' . (int) round((microtime(true) - $tPbRoundResult0) * 1000));
 		
 			echo json_encode($objResult);
 
 		} else{
-			writeLog($logHead . 'FAIL not logged in or bad session l=' . var_export($nLogId, true));
+			writeLog($logHead . 'FAIL not logged in or bad session l=' . var_export($nLogId, true) . ' done_ms=' . (int) round((microtime(true) - $tPbRoundResult0) * 1000));
 			$arrResult['status'] = "logout";
 
 			echo json_encode($arrResult);	

@@ -34,6 +34,38 @@
 
     }
 
+    /**
+     * PBG 일회차 번호·날짜 — reground_LT getLastRoundInfo(ROUND_5MIN) 과 동일.
+     * 00:00~00:04 → 전일 288회차, 00:05~ → floor(당일0시~분/5) 는 1..287.
+     */
+    function pballRoundSlotFloorFromTime($tmNow) {
+      date_default_timezone_set('Asia/Seoul');
+      $nHour = date("G", $tmNow);
+      $nMin = date("i", $tmNow);
+      $nSumMinutes = (int) ($nHour * 60 + $nMin);
+      $roundMin = 5;
+      $nRoundMax = (int) floor(1440 / $roundMin);
+      $nRoundNo = (int) floor($nSumMinutes / $roundMin);
+      if ($nRoundNo == 0) {
+        $nRoundNo = $nRoundMax;
+        $strDate = date('Y-m-d', strtotime("-1 day", $tmNow));
+      } else {
+        $strDate = date('Y-m-d', $tmNow);
+      }
+      return array(
+        'round_no' => $nRoundNo,
+        'round_date' => $strDate,
+        'nSumMinutes' => $nSumMinutes,
+        'nRoundMax' => $nRoundMax
+      );
+    }
+
+    /** 해당 일회차 슬롯의 마감 시각(당일 0시 기준 분) — 구 %288+1 체계의 round_no*5 와 동일 물리 시각 */
+    function pballRoundEndMinutesFromMidnight($nRoundNo) {
+      $nRoundNo = (int) $nRoundNo;
+      $nEnd = ($nRoundNo + 1) * 5;
+      return ($nEnd > 1440) ? 1440 : $nEnd;
+    }
 
     //회차시작시간과 마감시간, 배팅초과시간 계산하는 함수-파워볼, 파워사다리
     function getPballRoundTimes($objConfPb){
@@ -43,30 +75,14 @@
       $tmNow = time();
       // if($objConfPb->game_index == GAME_POWERBALL)
       //   $tmNow += TM_OFFSET;
-      $nYear = date("Y",$tmNow);
-      $nMonth = date("m",$tmNow);
-      $nDay = date("d",$tmNow);
 
-      $nHour = date("G",$tmNow);
-      $nMin = date("i",$tmNow);
-      //$second = date("s",$tmNow);
-
-      $nSumMinutes = $nHour * 60 + $nMin ;
-      $nRoundNo = floor($nSumMinutes / 5) ;
-      $nRoundNo = $nRoundNo % 288 + 1;
+      $slot = pballRoundSlotFloorFromTime($tmNow);
+      $nRoundNo = $slot['round_no'];
+      $strDate = $slot['round_date'];
       $arrRoundInfo['round_no'] = $nRoundNo;
-
-      $strDate = "";
-      if($nSumMinutes < 1440){
-        $strDate = date( 'Y-m-d', $tmNow );
-      }
-      else {
-        $strDate = date('Y-m-d', strtotime("+1 day", $tmNow));
-      }
-
       $arrRoundInfo['round_date'] = $strDate;
 
-      $nSumMinutes = $nRoundNo * 5 ;
+      $nSumMinutes = pballRoundEndMinutesFromMidnight($nRoundNo);
       $nHour = $nSumMinutes / 60;
       $nHour = floor($nHour);
       $nMinute = $nSumMinutes % 60;
@@ -108,31 +124,14 @@
       $tmNow = time();
       // if($gameId == GAME_POWERBALL)
       //   $tmNow += TM_OFFSET;
-      
-      $nYear = date("Y",$tmNow);
-      $nMonth = date("m",$tmNow);
-      $nDay = date("d",$tmNow);
 
-      $nHour = date("G",$tmNow);
-      $nMin = date("i",$tmNow);
-      //$second = date("s",$tmNow);
-
-      $nSumMinutes = $nHour * 60 + $nMin;
-      $nRoundNo = floor($nSumMinutes / 5) ;
-      $nRoundNo = $nRoundNo % 288 + 1;
+      $slot = pballRoundSlotFloorFromTime($tmNow);
+      $nRoundNo = $slot['round_no'];
+      $strDate = $slot['round_date'];
       $arrRoundInfo['round_no'] = $nRoundNo;
-
-      $strDate = "";
-      if($nSumMinutes < 1440){
-        $strDate = date( 'Y-m-d', $tmNow );
-      }
-      else {
-        $strDate = date('Y-m-d', strtotime("+1 day", $tmNow));
-      }
-
       $arrRoundInfo['round_date'] = $strDate;
 
-      $nSumMinutes = $nRoundNo * 5;
+      $nSumMinutes = pballRoundEndMinutesFromMidnight($nRoundNo);
       $nHour = $nSumMinutes / 60;
       $nHour = floor($nHour);
       $nMinute = $nSumMinutes % 60;
@@ -156,25 +155,13 @@
     function getPbLastRoundInfo(){
 
       $tmNow = time()+TM_OFFSET;
-      $nYear = date("Y",$tmNow);
-      $nMonth = date("m",$tmNow);
-      $nDay = date("d",$tmNow);
-
-      $nHour = date("G",$tmNow);
-      $nMin = date("i",$tmNow);
-
-      $nSumMinutes = $nHour * 60 + $nMin;
-      $nRoundNo = floor($nSumMinutes / 5) ;
-      $nRoundNo = $nRoundNo % 288 + 1;
-
-      $nRoundNo -= 1;
-      $strDate = "";
-      if($nRoundNo < 1){
-        $nRoundNo = 288;
+      $slot = pballRoundSlotFloorFromTime($tmNow);
+      $nRoundNo = $slot['round_no'] - 1;
+      if ($nRoundNo == 0) {
+        $nRoundNo = $slot['nRoundMax'];
         $strDate = date('Y-m-d', strtotime("-1 day", $tmNow));
-      }
-      else {
-        $strDate = date( 'Y-m-d', $tmNow );
+      } else {
+        $strDate = $slot['round_date'];
       }
 
       $arrRoundInfo['round_no'] = $nRoundNo;

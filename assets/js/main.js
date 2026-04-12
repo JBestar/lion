@@ -15,6 +15,24 @@ var m_btnBet = null;
 var m_bShowResult = false;
 /** 직전 마감 회차 결과(pbroundresult)를 한 번이라도 불러왔는지 — 초기 로드에서 setRoundResult 누락 방지 */
 var m_bRoundResultSyncedOnce = false;
+/** 추첨결과(시니어 패널) 지연 원인 분석: 브라우저 콘솔에서 `[senior-result]` 로 필터 */
+var m_tmLastPbcurrentgameReq = 0;
+var m_tmLastPbroundresultReq = 0;
+
+function logSeniorResultDiag(phase, detail) {
+    try {
+        var d = detail && typeof detail === "object" ? detail : {};
+        var row = {
+            phase: phase,
+            iso: new Date().toISOString(),
+            perfMs: typeof performance !== "undefined" && performance.now ? Math.round(performance.now()) : null
+        };
+        for (var k in d) {
+            if (Object.prototype.hasOwnProperty.call(d, k)) row[k] = d[k];
+        }
+        console.log("[senior-result]", JSON.stringify(row));
+    } catch (eLog) {}
+}
 /** 당첨내역 메뉴: 좌측 배팅리스트에 적중(결과 확정) 행만 표시 */
 var m_betListWinsOnly = false;
 
@@ -75,12 +93,12 @@ function addEventListner() {
     /*=============Round Result=============== */
     $("#buy-info-prev-id").click(function() {
         var nRoundId = $("#buy-info-round-id").text();
-        setRoundResult(parseInt(nRoundId) - 1);
+        setRoundResult(parseInt(nRoundId) - 1, "nav_prev");
     });
 
     $("#buy-info-next-id").click(function() {
         var nRoundId = $("#buy-info-round-id").text();
-        setRoundResult(parseInt(nRoundId) + 1);
+        setRoundResult(parseInt(nRoundId) + 1, "nav_next");
     });
 
 
@@ -629,7 +647,7 @@ function setCurrentRound(objRound) {
         if (parseInt($("#buy-info-round-id").text()) < 1 || prevGame !== gid) {
             m_bShowResult = true;
         }
-        setRoundResult(getLastCompletedRoundKey());
+        setRoundResult(getLastCompletedRoundKey(), "round_sync");
         return true;
     }
 
@@ -651,8 +669,9 @@ function getLastCompletedRoundKey() {
     return id - 1;
 }
 
-function setRoundResult(nRoundId) {
-
+function setRoundResult(nRoundId, reason) {
+    reason = reason || "unknown";
+    logSeniorResultDiag("setRoundResult", { reason: reason, roundKey: nRoundId, game: getGameId() });
 
     if (m_objRound.game >= 1) {
         let dVal = parseInt($("#buy-info-round-id").attr("name"));
@@ -716,6 +735,12 @@ function fillSeniorRoundLabel(objRound) {
 
 function fillSeniorResultCells(objRound) {
     if (!seniorRoundHasDrawResults(objRound)) {
+        logSeniorResultDiag("fillSeniorResultCells", {
+            action: "clear",
+            round_state: objRound ? objRound.round_state : null,
+            round_fid: objRound && objRound.round_fid != null ? objRound.round_fid : null,
+            has_r1: !!(objRound && objRound.round_result_1 != null && String(objRound.round_result_1).trim() !== "")
+        });
         $("#old_result_p").empty();
         $("#old_result_n").empty();
         return;
@@ -744,6 +769,11 @@ function fillSeniorResultCells(objRound) {
     }
     var tailN = sz ? seniorCycleHtml(sz, sc, "7f6779bf") : "";
     $("#old_result_n").html(seniorCycleHtml(n1, nc1, "7f6779bf") + seniorCycleHtml(n2, nc2, "7f6779bf") + tailN);
+    logSeniorResultDiag("fillSeniorResultCells", {
+        action: "render",
+        round_state: objRound.round_state,
+        round_fid: objRound.round_fid != null ? objRound.round_fid : null
+    });
 }
 
 function openMemWin(url, w, h) {
@@ -968,6 +998,11 @@ function fillSeniorRoundBetSummary(arrBetData) {
 }
 
 function showRoundResult(objRound, arrBetData) {
+    logSeniorResultDiag("showRoundResult", {
+        round_state: objRound != null ? objRound.round_state : null,
+        round_fid: objRound && objRound.round_fid != null ? objRound.round_fid : null,
+        round_is_null: objRound == null ? 1 : 0
+    });
     /*
     소  background: rgb(255, 193, 7); color:white; border:none;
     중  background: skyblue; 
@@ -1111,7 +1146,7 @@ function doBet() {
             if (jResult.status == "success") {
                 initBet();
                 showAlertBox(1, "구매하셧습니다!", 500);
-                setRoundResult(getLastCompletedRoundKey());
+                setRoundResult(getLastCompletedRoundKey(), "after_bet_success");
                 requestRecentBetList();
                 setTimeout(function() { requestAmountInfo(); }, 500);
 
@@ -1171,7 +1206,7 @@ function cancelBet(fid, objBtn) {
             } catch (eLog2) {}
             if (jResult.status == "success") {
                 showAlertBox(0, "취소되었습니다.", 2000);
-                setRoundResult(getLastCompletedRoundKey());
+                setRoundResult(getLastCompletedRoundKey(), "after_cancel");
                 requestRecentBetList();
                 setTimeout(function() { requestAmountInfo();}, 500);
                 
@@ -1293,12 +1328,19 @@ function requestCurrentRound() {
 
     var objData = { "game": getGameId() };
     var jsonData = JSON.stringify(objData);
+    var tAjax0 = typeof performance !== "undefined" && performance.now ? performance.now() : 0;
+    var nowWall = Date.now();
+    var sinceLast = m_tmLastPbcurrentgameReq > 0 ? (nowWall - m_tmLastPbcurrentgameReq) : null;
+    m_tmLastPbcurrentgameReq = nowWall;
+    logSeniorResultDiag("pbcurrentgame_request", { ms_since_last: sinceLast, game: objData.game });
     $.ajax({
         url: '/api/pbcurrentgame' + location.search,
         type: 'post',
         data: { json_: jsonData },
         dataType: "json",
         success: function(jResult) {
+            var ajaxMs = typeof performance !== "undefined" && performance.now ? Math.round(performance.now() - tAjax0) : null;
+            logSeniorResultDiag("pbcurrentgame_response", { status: jResult.status, ajax_ms: ajaxMs });
             // console.log(jResult);
             if (jResult.status == "success") {
                 if (setCurrentRound(jResult.data)) {
@@ -1312,6 +1354,8 @@ function requestCurrentRound() {
             }
         },
         error: function(request, status, error) {
+            var ajaxMs = typeof performance !== "undefined" && performance.now ? Math.round(performance.now() - tAjax0) : null;
+            logSeniorResultDiag("pbcurrentgame_error", { ajax_ms: ajaxMs, status: status, error: String(error || "") });
             // console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
         }
 
@@ -1328,6 +1372,16 @@ function requestRoundResult() {
     var jsonData = JSON.stringify(objData);
 
     // console.log(jsonData);
+    var tAjax0 = typeof performance !== "undefined" && performance.now ? performance.now() : 0;
+    var wall0 = Date.now();
+    var sinceLast = m_tmLastPbroundresultReq > 0 ? (wall0 - m_tmLastPbroundresultReq) : null;
+    m_tmLastPbroundresultReq = wall0;
+    logSeniorResultDiag("pbroundresult_request", {
+        round_id: nRoundId,
+        game_id: objData.game_id,
+        date_no: nDate,
+        ms_since_last_pbroundresult: sinceLast
+    });
 
     $.ajax({
         type: "POST",
@@ -1335,6 +1389,16 @@ function requestRoundResult() {
         data: { json_: jsonData },
         url: "/api/pbroundresult" + location.search,
         success: function(jResult) {
+            var ajaxMs = typeof performance !== "undefined" && performance.now ? Math.round(performance.now() - tAjax0) : null;
+            var r = jResult.round;
+            logSeniorResultDiag("pbroundresult_response", {
+                status: jResult.status,
+                ajax_ms: ajaxMs,
+                round_is_null: r == null ? 1 : 0,
+                round_state: r != null ? r.round_state : null,
+                round_fid: r && r.round_fid != null ? r.round_fid : null,
+                has_draw_bits: r ? seniorRoundHasDrawResults(r) : false
+            });
             if (jResult.status == "success") {
                 showRoundResult(jResult.round, jResult.bets);
             } else if (jResult.status == "logout") {
@@ -1342,7 +1406,8 @@ function requestRoundResult() {
             }
         },
         error: function(request, status, error) {
-
+            var ajaxMs = typeof performance !== "undefined" && performance.now ? Math.round(performance.now() - tAjax0) : null;
+            logSeniorResultDiag("pbroundresult_error", { ajax_ms: ajaxMs, status: status, error: String(error || "") });
         }
     });
 }
@@ -1913,7 +1978,7 @@ function showTime() {
         if (!m_bShowResult && m_objRound.round_current > m_objRound.round_start + 30000 &&
             m_objRound.round_current < m_objRound.round_start + 60000) {
             m_bShowResult = true;
-            setRoundResult(getLastCompletedRoundKey());
+            setRoundResult(getLastCompletedRoundKey(), "timer_mid_round_30_60s");
         }
 
         if (m_elemCountTm) m_elemCountTm.innerHTML = fullNumber(nRemainMin) + ":" + fullNumber(nRemainSec);
@@ -1938,7 +2003,7 @@ function showTime() {
             m_btnBet.disabled = true;
             m_btnBet.classList.add("is-disabled");
             
-            setRoundResult(getLastCompletedRoundKey());
+            setRoundResult(getLastCompletedRoundKey(), "timer_bet_end");
         }
     }
     //회차결과현시
