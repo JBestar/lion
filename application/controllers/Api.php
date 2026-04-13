@@ -203,11 +203,6 @@ class Api extends CI_Controller {
 	}
 	//현재 게임회차, 시간정보를 보내주는 함수
 	public function pbcurrentgame(){ 
-		$t0 = microtime(true);
-		$logHead = 'Api.pbcurrentgame ';
-		writeLog($logHead . 'start');
-		logTimezoneDiagnostic($logHead, $this);
-
 		$jsonData = $_REQUEST['json_'];
 		$arrRaData = json_decode($jsonData, true);
 
@@ -263,11 +258,9 @@ class Api extends CI_Controller {
 				$arrResult['status'] = "success";
 			}
 			
-			writeLog($logHead . 'done_ms=' . (int) round((microtime(true) - $t0) * 1000) . ' status=' . (isset($arrResult['status']) ? $arrResult['status'] : '') . ' game=' . $gameId);
 			echo json_encode($arrResult);
 		}
 		else{
-			writeLog($logHead . 'done_ms=' . (int) round((microtime(true) - $t0) * 1000) . ' status=logout');
 			$arrResult['status'] = "logout";
 			echo json_encode($arrResult);	
 		}
@@ -621,24 +614,15 @@ class Api extends CI_Controller {
 	}
 
 	public function pbroundresult(){
-		$tPbRoundResult0 = microtime(true);
-		$logHead = 'Api.pbroundresult ';
 		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
-		$jsonLen = is_string($jsonData) ? strlen($jsonData) : 0;
-		writeLog($logHead . 'start json_len=' . $jsonLen);
-		logTimezoneDiagnostic($logHead, $this);
-
 		$arrReqData = is_string($jsonData) ? json_decode($jsonData, true) : null;
 		if (!is_array($arrReqData)) {
-			writeLog($logHead . 'FAIL json_decode err=' . json_last_error_msg());
 			$arrReqData = array();
 		}
 
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
-			
-			//model
 			$this->load->model('member_model');	
 			$this->load->model('pbround_model');
 			$this->load->model('pbbet_model');	
@@ -646,12 +630,9 @@ class Api extends CI_Controller {
 			$strUid = $this->sess_model->getUserId($nLogId);			
 			$objUser = $this->member_model->getInfoByUid($strUid);
 
-
 			$nRoundId = isset($arrReqData['round_id']) ? $arrReqData['round_id'] : null;
 			$nGameId = isset($arrReqData['game_id']) ? $arrReqData['game_id'] : null;
 			$nDateNo = isset($arrReqData['date_no']) ? $arrReqData['date_no'] : null;
-
-			writeLog($logHead . 'req round_id=' . var_export($nRoundId, true) . ' game_id=' . var_export($nGameId, true) . ' date_no=' . var_export($nDateNo, true) . ' uid=' . ($strUid !== '' ? $strUid : '(empty)'));
 
 			$objRound = null;
 			$arrBetData = null;
@@ -660,29 +641,6 @@ class Api extends CI_Controller {
 				if($nRoundId > 0 && !is_null($objUser)){
 					$objRound = $this->pbround_model->getById($nGameId, $nRoundId);
 					$arrBetData = $this->pbbet_model->getByRoundId($objUser->mb_uid, $nRoundId, $nGameId);
-					if (is_null($objRound)) {
-						writeLog($logHead . 'PBG getById returned NULL (lookup round_game=' . $nGameId . ' round_fid=' . var_export($nRoundId, true) . ')');
-						$hintRows = $this->pbround_model->gets($nGameId, 1);
-						if (!empty($hintRows) && isset($hintRows[0])) {
-							$h = $hintRows[0];
-							$rf = isset($h->round_fid) ? $h->round_fid : '';
-							$rh = isset($h->round_hash) ? $h->round_hash : '';
-							writeLog($logHead . 'PBG hint latest DB row round_fid=' . var_export($rf, true) . ' round_hash=' . var_export($rh, true) . ' round_num=' . (isset($h->round_num) ? $h->round_num : '') . ' round_date=' . (isset($h->round_date) ? $h->round_date : ''));
-						} else {
-							writeLog($logHead . 'PBG hint no rows in round_pball for round_game=' . $nGameId);
-						}
-					} else {
-						writeLog($logHead . 'PBG OK round_fid=' . (isset($objRound->round_fid) ? $objRound->round_fid : '') . ' round_hash=' . (isset($objRound->round_hash) ? $objRound->round_hash : ''));
-					}
-					$nBets = is_array($arrBetData) ? count($arrBetData) : 0;
-					writeLog($logHead . 'PBG bets count=' . $nBets);
-				} else {
-					if (!($nRoundId > 0)) {
-						writeLog($logHead . 'PBG SKIP round_id not > 0 (got ' . var_export($nRoundId, true) . ')');
-					}
-					if (is_null($objUser)) {
-						writeLog($logHead . 'PBG SKIP objUser null');
-					}
 				}
 			} else if($nGameId == GAME_COIN_5){
 				if(!is_null($objUser)){
@@ -693,16 +651,8 @@ class Api extends CI_Controller {
 					} else if($nDateNo > 0){
 						$strDate = date('Y-m-d', strtotime("+1 day", $tmNow));
 					}
-						
 					$objRound = $this->pbround_model->getByNum($nGameId, $strDate, $nRoundId);
 					$arrBetData = $this->pbbet_model->getByRoundNo($objUser->mb_uid, $strDate, $nRoundId, $nGameId);
-					if (is_null($objRound)) {
-						writeLog($logHead . 'COIN getByNum NULL date=' . $strDate . ' round_num=' . var_export($nRoundId, true));
-					} else {
-						writeLog($logHead . 'COIN OK round_fid=' . (isset($objRound->round_fid) ? $objRound->round_fid : ''));
-					}
-				} else {
-					writeLog($logHead . 'COIN SKIP objUser null');
 				}
 			} else if($nGameId == GAME_EOS_5){
 				if(!is_null($objUser)){
@@ -713,40 +663,19 @@ class Api extends CI_Controller {
 					} else if($nDateNo > 0){
 						$strDate = date('Y-m-d', strtotime("+1 day", $tmNow));
 					}
-
 					$objRound = $this->pbround_model->getByNum($nGameId, $strDate, $nRoundId);
 					$arrBetData = $this->pbbet_model->getByRoundNo($objUser->mb_uid, $strDate, $nRoundId, $nGameId);
-					if (is_null($objRound)) {
-						writeLog($logHead . 'EOS getByNum NULL date=' . $strDate . ' round_num=' . var_export($nRoundId, true));
-					} else {
-						writeLog($logHead . 'EOS OK round_fid=' . (isset($objRound->round_fid) ? $objRound->round_fid : ''));
-					}
-				} else {
-					writeLog($logHead . 'EOS SKIP objUser null');
 				}
-			} else {
-				writeLog($logHead . 'SKIP unknown game_id=' . var_export($nGameId, true));
 			}
 
 			$objResult = new StdClass;
 			$objResult->round = $objRound;		
 			$objResult->bets = $arrBetData;		
 			$objResult->status = "success";
-
-			$rs = 'n/a';
-			$rfid = 'n/a';
-			if (!is_null($objRound)) {
-				$rs = isset($objRound->round_state) ? (string) $objRound->round_state : 'n/a';
-				$rfid = isset($objRound->round_fid) ? (string) $objRound->round_fid : 'n/a';
-			}
-			writeLog($logHead . 'response round_is_null=' . (is_null($objRound) ? '1' : '0') . ' round_state=' . $rs . ' round_fid=' . $rfid . ' bets_count=' . (is_array($arrBetData) ? count($arrBetData) : 0) . ' done_ms=' . (int) round((microtime(true) - $tPbRoundResult0) * 1000));
-		
 			echo json_encode($objResult);
 
 		} else{
-			writeLog($logHead . 'FAIL not logged in or bad session l=' . var_export($nLogId, true) . ' done_ms=' . (int) round((microtime(true) - $tPbRoundResult0) * 1000));
 			$arrResult['status'] = "logout";
-
 			echo json_encode($arrResult);	
 		}
 	}

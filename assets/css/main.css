@@ -1522,15 +1522,27 @@ body {
 
 
 .calcel-btn {
-    /* background: linear-gradient(45deg, #c6c5be, #f8f4eb); */
-    font-size: 13px;
-    font-weight: 600;
-    color: rgb(188, 0, 0);
-    cursor:pointer;
+    display: inline-block;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #fff !important;
+    background: #d62929;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    user-select: none;
+    vertical-align: middle;
 }
 
 .calcel-btn:hover {
-    color: #ffb806;
-    transform: scale(1.25);
+    background: #b82121;
+    color: #fff !important;
+}
 
+.calcel-btn:active {
+    background: #9e1c1c;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
