@@ -21,7 +21,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 
 	}
@@ -42,7 +42,7 @@ class Control extends CI_Controller {
 		{
 			$this->sess_model->logout($nLogId);
 		}
-		redirect( base_url().'control/login', 'refresh');
+		redirect( base_url().'ccc/login', 'refresh');
 	}
 
     public function statist()
@@ -62,7 +62,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 	}
 
@@ -83,7 +83,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 	}
 
@@ -104,7 +104,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 	}
     
@@ -126,7 +126,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 	}
 
@@ -147,7 +147,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 	}
 
@@ -168,7 +168,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 	}
 
@@ -189,7 +189,7 @@ class Control extends CI_Controller {
 
 		}
 		else {
-			redirect( base_url().'control/login');
+			redirect( base_url().'ccc/login');
 		}
 	}
 }
