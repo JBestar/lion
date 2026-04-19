@@ -311,7 +311,7 @@
         case 31:
         case 32:
         case 33:
-        case 33:
+        case 34:
         case 35:
         case 36:
         case 37:
@@ -319,7 +319,6 @@
         case 39: $strRatio = $objConfPb->game_ratio_23; $arrBetData['target'] = 'Q'; break;
         case 41:
         case 42:
-        case 43:
         case 43:
         case 44:
         case 45:
