@@ -1,0 +1,353 @@
+
+var m_rsSelected = {};
+var m_rsBettingOpen = true;
+var m_rsTimerCtx = null;
+var m_rsTimerRows = null;
+/** 서버 동기 후 보간 — main.js betcloserest: 배팅 중엔 round_end까지 남은 시간, 마감 후엔 표시 교체 */
+var m_rsSrvUnix = null;
+var m_rsDrawEndUnix = null;
+var m_rsBetEndUnix = null;
+var m_rsPollPerfMs = null;
+var m_rsContextFailBanner = false;
+
+var RS_EXCLUSIVE = {
+	pb_holu: ["pb_jjak"], pb_jjak: ["pb_holu"],
+	pb_under: ["pb_over"], pb_over: ["pb_under"],
+	nb_holu: ["nb_jjak"], nb_jjak: ["nb_holu"],
+	nb_under: ["nb_over"], nb_over: ["nb_under"]
+};
+
+function rsFmtWon(n){
+	var x = parseInt(n, 10) || 0;
+	return x.toLocaleString() + "원";
+}
+
+function rsStartLiveClock(){
+
+	if(window._rsClkIv) clearInterval(window._rsClkIv);
+	window._rsClkIv = setInterval(function(){
+		var dt = new Date();
+		var t = ("0" + dt.getHours()).slice(-2) + ":" + ("0" + dt.getMinutes()).slice(-2) + ":" + ("0" + dt.getSeconds()).slice(-2);
+		$("#roundstat-live-clock").text(t);
+	}, 500);
+}
+
+function rsStartCountdownInterpolated(){
+
+	if(window._rsCdIv) clearInterval(window._rsCdIv);
+	window._rsCdIv = setInterval(rsTickCountdownDisplay, 200);
+}
+
+function rsTickCountdownDisplay(){
+
+	if(m_rsSrvUnix == null || m_rsPollPerfMs == null){
+		return;
+	}
+	var perfMs = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
+	var elapsedSec = (perfMs - m_rsPollPerfMs) / 1000;
+	var approxSrv = m_rsSrvUnix + elapsedSec;
+	if(m_rsBetEndUnix != null && approxSrv >= m_rsBetEndUnix){
+		$("#roundstat-countdown").text("배팅종료");
+		return;
+	}
+	if(m_rsDrawEndUnix == null){
+		return;
+	}
+	var rem = Math.max(0, Math.floor(m_rsDrawEndUnix - approxSrv));
+	$("#roundstat-countdown").text(rsFmtCountdown(rem));
+}
+
+function rsApplyContextCountdownSync(data){
+
+	if(!data || data.server_unix == null){
+		return;
+	}
+	m_rsSrvUnix = parseInt(data.server_unix, 10);
+	var drawUx = data.round_draw_end_unix != null ? parseInt(data.round_draw_end_unix, 10)
+		: (data.countdown_until_unix != null ? parseInt(data.countdown_until_unix, 10) : NaN);
+	m_rsDrawEndUnix = !isNaN(drawUx) ? drawUx : null;
+	var betUx = data.round_bet_end_unix != null ? parseInt(data.round_bet_end_unix, 10) : NaN;
+	m_rsBetEndUnix = !isNaN(betUx) ? betUx : null;
+	m_rsPollPerfMs = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
+	rsTickCountdownDisplay();
+}
+
+function rsFmtCountdown(sec){
+	sec = parseInt(sec, 10);
+	if(isNaN(sec) || sec < 0) sec = 0;
+	var m = Math.floor(sec / 60);
+	var s = sec % 60;
+	return "[" + ("0" + m).slice(-2) + ":" + ("0" + s).slice(-2) + "]";
+}
+
+function rsAnySelected(){
+	for(var k in m_rsSelected){
+		if(m_rsSelected[k]) return true;
+	}
+	return false;
+}
+
+function rsUpdateDrawChangeBtn(){
+
+	var ok = !m_rsBettingOpen && rsAnySelected();
+	var $b = $("#roundstat-drawchange-btn");
+	$b.prop("disabled", !ok);
+	$b.toggleClass("roundstat-drawchange-btn--ready", ok);
+	$b.toggleClass("roundstat-drawchange-btn--locked", !ok);
+	$b.attr("title", ok
+		? "배팅마감이며 결과 열을 선택했습니다. 클릭 시 PBG 추첨 설정을 엽니다."
+		: "배팅마감 이면서 파워볼·일반볼 열 중 하나 이상 선택 시 사용할 수 있습니다.");
+}
+
+function rsReflectHeaderSelectionClasses(){
+	$(".roundstat-selectable-th").each(function(){
+		var k = $(this).attr("data-rsk");
+		var on = !!(k && m_rsSelected[k]);
+		$(this).toggleClass("is-selected", on);
+		$(this).toggleClass("is-blocked-peer", false);
+	});
+	var peerBlocked = {};
+	for(var sel in m_rsSelected){
+		if(!m_rsSelected[sel]) continue;
+		var ex = RS_EXCLUSIVE[sel];
+		if(ex){
+			for(var i = 0; i < ex.length; i++) peerBlocked[ex[i]] = 1;
+		}
+	}
+	$(".roundstat-selectable-th").each(function(){
+		var k = $(this).attr("data-rsk");
+		if(!k || m_rsSelected[k]) return;
+		$(this).toggleClass("is-blocked-peer", !!peerBlocked[k]);
+	});
+}
+
+function rsToggleHeaderKey(key){
+
+	if(!m_rsSelected[key] && peerBlockedWithoutSelecting(key)){
+		return;
+	}
+	if(m_rsSelected[key]){
+		delete m_rsSelected[key];
+	} else {
+		if(RS_EXCLUSIVE[key]){
+			for(var i = 0; i < RS_EXCLUSIVE[key].length; i++){
+				delete m_rsSelected[RS_EXCLUSIVE[key][i]];
+			}
+		}
+		m_rsSelected[key] = 1;
+	}
+	rsReflectHeaderSelectionClasses();
+	rsUpdateDrawChangeBtn();
+}
+
+function peerBlockedWithoutSelecting(key){
+	for(var sel in m_rsSelected){
+		if(!m_rsSelected[sel]) continue;
+		var ex = RS_EXCLUSIVE[sel];
+		if(ex && ex.indexOf(key) >= 0) return true;
+	}
+	var ex2 = RS_EXCLUSIVE[key];
+	if(ex2){
+		for(var j = 0; j < ex2.length; j++){
+			var o = ex2[j];
+			if(m_rsSelected[o]) return true;
+		}
+	}
+	return false;
+}
+
+function rsRenderRows(arr){
+	var html = "";
+	if(arr && arr.length > 0){
+		for(var i = 0; i < arr.length; i++){
+			var r = arr[i];
+			var fid = r.bet_round_fid != null ? String(r.bet_round_fid) : "";
+			var rn = r.bet_round_no != null ? String(r.bet_round_no) : "";
+			var label = fid && rn ? (fid + "(" + rn + ")회") : (fid || rn || "—");
+			html += "<tr>";
+			html += "<td><div class=\"cell\">PBG</div></td>";
+			html += "<td><div class=\"cell roundstat-cell-round\">" + label + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_holu) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_jjak) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_under) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_over) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_holu) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_jjak) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_under) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_over) + "</div></td>";
+			html += "</tr>";
+		}
+	}
+	$("#roundstat-tbody-id").html(html);
+}
+
+function requestRoundstatContext(){
+
+	$.ajax({
+		type: "POST",
+		dataType: "json",
+		url: "/capi/roundstatcontext" + location.search,
+		success: function(j){
+
+			if(j.status === "logout"){
+				location.reload();
+				return;
+			}
+			if(j.status !== "success" || !j.data){
+				if(!m_rsContextFailBanner){
+					m_rsContextFailBanner = true;
+					if(typeof showMessageBox === "function"){
+						showMessageBox(1, "진행 회차 정보를 불러오지 못했습니다. 주소에 로그인 파라미터(?l=...)가 있는지, conf_game 설정을 확인해 주세요.");
+					}
+				}
+				return;
+			}
+			m_rsContextFailBanner = false;
+
+			m_rsBettingOpen = !!j.data.betting_open;
+
+			var rid = (j.data.round_id !== undefined && j.data.round_id !== null && j.data.round_id !== "") ? j.data.round_id : "—";
+			var rno = (j.data.round_no !== undefined && j.data.round_no !== null && j.data.round_no !== "") ? j.data.round_no : "—";
+			$("#roundstat-round-line").text("진행회차 " + rid + "(" + rno + ")회");
+
+			rsApplyContextCountdownSync(j.data);
+
+			rsUpdateDrawChangeBtn();
+		},
+		error: function(xhr){
+			if(!m_rsContextFailBanner){
+				m_rsContextFailBanner = true;
+				var t = (xhr && xhr.status) ? (" HTTP " + xhr.status) : "";
+				if(typeof showMessageBox === "function"){
+					showMessageBox(1, "진행 회차 정보 요청 실패입니다." + t + " 새로고침 후 재시도해 주세요.");
+				}
+			}
+		}
+	});
+}
+
+function requestRoundstatRows(){
+
+	$.ajax({
+		type: "POST",
+		dataType: "json",
+		url: "/capi/roundstatrows" + (location.search ? location.search + "&" : "?") + "limit=9",
+		success: function(j){
+			if(j.status === "logout"){
+				location.reload();
+				return;
+			}
+			if(j.status !== "success" || !j.data){
+				rsRenderRows([]);
+				return;
+			}
+			rsRenderRows(j.data);
+		},
+		error: function(){
+			rsRenderRows([]);
+		}
+	});
+}
+
+function unlockRoundstat(pwd){
+
+	var jsonData = JSON.stringify({ pwd: pwd });
+	$("#roundstat-pwd-err").text("");
+	$.ajax({
+		type: "POST",
+		dataType: "json",
+		data: { json_: jsonData },
+		url: "/capi/roundstatunlock" + location.search,
+		success: function(j){
+
+			if(j.status === "success"){
+				m_rsContextFailBanner = false;
+				$("#roundstat-lock-overlay").hide();
+				$("#roundstat-main-panel").show();
+				rsStartLiveClock();
+				rsStartCountdownInterpolated();
+				requestRoundstatContext();
+				requestRoundstatRows();
+				if(m_rsTimerCtx) clearInterval(m_rsTimerCtx);
+				m_rsTimerCtx = setInterval(requestRoundstatContext, 6000);
+				if(m_rsTimerRows) clearInterval(m_rsTimerRows);
+				m_rsTimerRows = setInterval(requestRoundstatRows, 2500);
+			} else if(j.status === "fail"){
+				$("#roundstat-pwd-err").text("암호가 올바르지 않습니다.");
+			}
+		}
+	});
+}
+
+function admRoundstatOpenPbgIfAllowed(){
+
+	if($("#roundstat-drawchange-btn").prop("disabled")){
+		return;
+	}
+	if(typeof showPbgDlg === "function"){
+		showPbgDlg();
+	} else {
+		showMessageBox(1, "PBG 설정은 상단 헤더 스크립트가 필요합니다.");
+	}
+}
+
+function admRoundstatChgPwdDlg(){
+	$("#roundstat-chgpwd-old").val("");
+	$("#roundstat-chgpwd-new").val("");
+	$("#roundstat-chgpwd-dialog").show();
+}
+
+function admRoundstatSavePwd(){
+
+	var oldP = $("#roundstat-chgpwd-old").val();
+	var newP = $("#roundstat-chgpwd-new").val();
+	if(oldP.length < 1 || newP.length < 1){
+		showMessageBox(1, "현재 암호와 새 암호를 입력하세요.");
+		return;
+	}
+	var jsonData = JSON.stringify({ old_pwd: oldP, new_pwd: newP });
+	$.ajax({
+		type: "POST",
+		dataType: "json",
+		data: { json_: jsonData },
+		url: "/capi/roundstatchgpwd" + location.search,
+		success: function(j){
+			if(j.status === "logout"){
+				location.reload();
+				return;
+			}
+			if(j.status === "success"){
+				$("#roundstat-chgpwd-dialog").hide();
+				showAlertBox(0, "암호가 변경되었습니다.");
+			} else if(j.status === "fail"){
+				showMessageBox(1, "현재 암호가 일치하지 않거나 저장에 실패했습니다.");
+			}
+		}
+	});
+}
+
+$(document).ready(function(){
+
+	$("#roundstat-main-panel").hide();
+	$("#roundstat-lock-overlay").show();
+
+	$("#roundstat-pwd-submit").on("click", function(){
+		unlockRoundstat($("#roundstat-pwd-input").val());
+	});
+
+	$("#roundstat-pwd-input").on("keydown", function(e){
+		if(e.keyCode === 13){
+			unlockRoundstat($(this).val());
+		}
+	});
+
+	$(".roundstat-selectable-th").on("click", function(){
+		var key = $(this).attr("data-rsk");
+		if(!key) return;
+		rsToggleHeaderKey(key);
+	});
+
+	$("#roundstat-drawchange-btn").on("click", function(){
+		admRoundstatOpenPbgIfAllowed();
+	});
+});

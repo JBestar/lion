@@ -52193,3 +52193,129 @@ html.overflow-y-hidden {
     line-height: 1.4;
 }
 
+/* 회차별통계 (본사) */
+.roundstat-lock-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2400;
+    background: rgba(0,0,0,.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.roundstat-lock-dialog {
+    background: #303133;
+    padding: 28px 32px;
+    border-radius: 8px;
+    min-width: 320px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+.roundstat-lock-title { font-size: 18px; color: #fff; font-weight: 600; margin-bottom: 12px; text-align: center; }
+.roundstat-lock-desc { font-size: 14px; color: #ccc; margin-bottom: 10px; text-align: center; }
+.roundstat-lock-input { width: 100%; box-sizing: border-box; margin-bottom: 14px; }
+.roundstat-lock-actions { text-align: center; }
+.roundstat-pwd-err { color: #f56c6c; font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
+
+.roundstat-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 10px 0 6px;
+    font-size: 15px;
+    width: 100%;
+}
+.roundstat-toolbar-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    flex: 1;
+    min-width: 0;
+}
+.roundstat-chgpwd-at-end {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* 추첨변경: 활성/비활성 구분을 명확히 */
+.roundstat-drawchange-btn {
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, opacity .2s ease, filter .2s ease;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    min-width: 88px;
+}
+.roundstat-drawchange-btn.roundstat-drawchange-btn--locked:disabled {
+    cursor: not-allowed !important;
+    opacity: 1;
+    filter: grayscale(65%);
+    background-color: #e4e7ed !important;
+    border-color: #dcdfe6 !important;
+    color: #909399 !important;
+    box-shadow: none !important;
+}
+.roundstat-drawchange-btn.roundstat-drawchange-btn--ready:not(:disabled) {
+    cursor: pointer;
+    background-color: #e6a23c !important;
+    border-color: #cf9236 !important;
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(230, 162, 60, 0.42) !important;
+}
+.roundstat-drawchange-btn.roundstat-drawchange-btn--ready:not(:disabled):hover {
+    background-color: #ebb563 !important;
+    border-color: #e6a23c !important;
+    box-shadow: 0 3px 10px rgba(230, 162, 60, 0.5) !important;
+}
+.roundstat-live-clock { font-variant-numeric: tabular-nums; font-weight: 600; color: #303133; min-width: 78px; }
+.roundstat-round-line { color: #606266; font-weight: 600; }
+.roundstat-countdown { font-variant-numeric: tabular-nums; color: #409eff; font-weight: 600; }
+.roundstat-phase { padding: 3px 10px; border-radius: 4px; font-weight: 600; font-size: 13px; }
+.roundstat-phase.phase-open { background: #ecf5ff; color: #409eff; }
+.roundstat-phase.phase-closed { background: #fde2e2; color: #f56c6c; }
+
+/* el-table 기본(flex:1·overflow:hidden)이 flex 레이아웃에서 높이 0으로 꺾여 목록이 안 보이는 문제 방지 */
+.roundstat-table-shell.el-table {
+    flex: none !important;
+    overflow: visible !important;
+    max-width: 100%;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.roundstat-table {
+    width: 100%;
+    min-width: 900px;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.roundstat-col-game { width: 64px; }
+.roundstat-col-round { width: 240px; min-width: 220px; }
+.roundstat-cell-round {
+    white-space: nowrap;
+    overflow: visible;
+}
+.roundstat-table th, .roundstat-table td { padding: 10px 8px; border-bottom: 1px solid #ebeef5; font-size: 13px; text-align: center; vertical-align: middle; box-sizing: border-box; min-height: 40px; }
+
+.roundstat-table thead th {
+    background: #f5f7fa !important;
+}
+.roundstat-table thead th > .cell {
+    background: transparent;
+}
+
+.roundstat-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.roundstat-selectable-th { cursor: pointer; user-select: none; transition: background .15s; }
+.roundstat-table thead .roundstat-selectable-th:hover { background: #e6f7ff !important; }
+.roundstat-table thead .roundstat-selectable-th.is-selected { background: #b3e19d !important; color: #1a1a1a; }
+.roundstat-table thead .roundstat-selectable-th.is-blocked-peer { opacity: .45; cursor: not-allowed !important; }
+
+.roundstat-mini-dialog { margin-top: 10vh; width: 400px; }
+

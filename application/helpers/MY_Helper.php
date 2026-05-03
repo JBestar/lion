@@ -29,7 +29,8 @@
                'menuitem_6' => '',
                'menuitem_7' => '',
                'menuitem_8' => '',
-               'menuitem_9' => ''
+               'menuitem_9' => '',
+               'menuitem_10' => ''
           );
 
     }

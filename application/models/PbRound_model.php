@@ -39,5 +39,21 @@ class PbRound_model extends CI_Model {
         
         return $this->db->get_where($this->mTableName, array('round_game'=>$gameId, 'round_date'=>$strDate, 'round_num'=>$nRoundNo))->row();
     }
-    
+
+    /** 추첨 전(round_state!=1) partial 결과 필드만 갱신 */
+    public function updatePendingResultCells($gameId, $roundFid, array $cells){
+
+        if(count($cells) < 1)
+            return false;
+
+        $this->db->where('round_game', $gameId);
+        $this->db->where('round_fid', $roundFid);
+        $this->db->where('round_state !=', 1);
+        foreach($cells as $col => $val){
+            if(in_array($col, array('round_result_1','round_result_2','round_result_3','round_result_4'), true))
+                $this->db->set($col, $val);
+        }
+        return $this->db->update($this->mTableName);
+    }
+
 }

@@ -65,7 +65,7 @@ class Admin extends CI_Controller {
 		}
 	}
 
-    public function charge()
+    public function roundstat()
 	{
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
@@ -73,6 +73,27 @@ class Admin extends CI_Controller {
 
 			$arrData = getSidebarArray();
 			$arrData['menuitem_3'] = " is-active ";
+
+			$this->load->model('confsite_model');
+			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			
+            $this->load->view('admin/header_adm', $arrData);
+			$this->load->view('admin/roundstat_adm');
+            $this->load->view('admin/footer_adm');
+		}
+		else {
+			redirect( base_url().'admin/login');
+		}
+	}
+
+    public function charge()
+	{
+		$nLogId = trim($this->input->get('l'));		
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
+		{
+
+			$arrData = getSidebarArray();
+			$arrData['menuitem_4'] = " is-active ";
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
@@ -86,14 +107,14 @@ class Admin extends CI_Controller {
 		}
 	}
 
-    public function discharge()
+	public function discharge()
 	{
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
 		{
 
 			$arrData = getSidebarArray();
-			$arrData['menuitem_4'] = " is-active ";
+			$arrData['menuitem_5'] = " is-active ";
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
@@ -115,7 +136,7 @@ class Admin extends CI_Controller {
 		{
 
 			$arrData = getSidebarArray();
-			$arrData['menuitem_5'] = " is-active ";
+			$arrData['menuitem_6'] = " is-active ";
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
@@ -136,7 +157,7 @@ class Admin extends CI_Controller {
 		{
 
 			$arrData = getSidebarArray();
-			$arrData['menuitem_6'] = " is-active ";
+			$arrData['menuitem_7'] = " is-active ";
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
@@ -158,7 +179,7 @@ class Admin extends CI_Controller {
 		{
 
 			$arrData = getSidebarArray();
-			$arrData['menuitem_7'] = " is-active ";
+			$arrData['menuitem_8'] = " is-active ";
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
@@ -179,7 +200,7 @@ class Admin extends CI_Controller {
 		{
 
 			$arrData = getSidebarArray();
-			$arrData['menuitem_8'] = " is-active ";
+			$arrData['menuitem_9'] = " is-active ";
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
@@ -200,7 +221,7 @@ class Admin extends CI_Controller {
 		{
 
 			$arrData = getSidebarArray();
-			$arrData['menuitem_9'] = " is-active ";
+			$arrData['menuitem_10'] = " is-active ";
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();

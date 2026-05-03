@@ -259,4 +259,247 @@ class PbBet_model extends CI_Model {
         
     }
 
+    /**
+     * 회차별통계 8컬럼용 빈 버킷
+     */
+    private function roundstatEmptySums(){
+        return array(
+            'sum_pb_holu' => 0, 'sum_pb_jjak' => 0, 'sum_pb_under' => 0, 'sum_pb_over' => 0,
+            'sum_nb_holu' => 0, 'sum_nb_jjak' => 0, 'sum_nb_under' => 0, 'sum_nb_over' => 0,
+        );
+    }
+
+    /** 배팅금액 × 배당(bet_ratio) 후 정수(바닥) */
+    private function roundstatWeightedInt($money, $ratio){
+        $m = is_numeric($money) ? (float) $money : 0;
+        $r = is_numeric($ratio) ? (float) $ratio : 0;
+        if($m <= 0 || $r < 0){
+            return 0;
+        }
+        return (int) floor($m * $r + 1e-9);
+    }
+
+    /** k=2 균등분배 + 나머지 1씩은 앞쪽 버킷(정확히 합 일치) */
+    private function roundstatAddSplit2(&$sums, $w, $keyA, $keyB){
+        if($w < 1){
+            return;
+        }
+        $b = intdiv($w, 2);
+        $rem = $w % 2;
+        $sums[$keyA] += $b + ($rem > 0 ? 1 : 0);
+        $sums[$keyB] += $b;
+    }
+
+    /** k=3 균등분배(3묶음) */
+    private function roundstatAddSplit3(&$sums, $w, $keyA, $keyB, $keyC){
+        if($w < 1){
+            return;
+        }
+        $b = intdiv($w, 3);
+        $rem = $w % 3;
+        $sums[$keyA] += $b + ($rem > 0 ? 1 : 0);
+        $sums[$keyB] += $b + ($rem > 1 ? 1 : 0);
+        $sums[$keyC] += $b;
+    }
+
+    /**
+     * 한 건의 배팅을 8컬럼 표시 규칙에 반영
+     * (모드 5~8 파워 조합·13~16 일반 조합은 2분할, 41~48 3묶음은 3분할. 숫자/대중소 단독 등은 표에 없음)
+     */
+    private function roundstatApplyBet(&$sums, $money, $ratio, $mode){
+        $mode = (int) $mode;
+        $w = $this->roundstatWeightedInt($money, $ratio);
+        if($w < 1){
+            return;
+        }
+
+        switch($mode){
+            case 1:
+                $sums['sum_pb_holu'] += $w;
+                break;
+            case 2:
+                $sums['sum_pb_jjak'] += $w;
+                break;
+            case 3:
+                $sums['sum_pb_under'] += $w;
+                break;
+            case 4:
+                $sums['sum_pb_over'] += $w;
+                break;
+            case 9:
+                $sums['sum_nb_holu'] += $w;
+                break;
+            case 10:
+                $sums['sum_nb_jjak'] += $w;
+                break;
+            case 11:
+                $sums['sum_nb_under'] += $w;
+                break;
+            case 12:
+                $sums['sum_nb_over'] += $w;
+                break;
+
+            case 5:
+                $this->roundstatAddSplit2($sums, $w, 'sum_pb_holu', 'sum_pb_under');
+                break;
+            case 6:
+                $this->roundstatAddSplit2($sums, $w, 'sum_pb_jjak', 'sum_pb_under');
+                break;
+            case 7:
+                $this->roundstatAddSplit2($sums, $w, 'sum_pb_holu', 'sum_pb_over');
+                break;
+            case 8:
+                $this->roundstatAddSplit2($sums, $w, 'sum_pb_jjak', 'sum_pb_over');
+                break;
+
+            case 13:
+                $this->roundstatAddSplit2($sums, $w, 'sum_nb_holu', 'sum_nb_under');
+                break;
+            case 14:
+                $this->roundstatAddSplit2($sums, $w, 'sum_nb_jjak', 'sum_nb_under');
+                break;
+            case 15:
+                $this->roundstatAddSplit2($sums, $w, 'sum_nb_holu', 'sum_nb_over');
+                break;
+            case 16:
+                $this->roundstatAddSplit2($sums, $w, 'sum_nb_jjak', 'sum_nb_over');
+                break;
+
+            case 41:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_holu', 'sum_nb_under', 'sum_pb_holu');
+                break;
+            case 42:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_holu', 'sum_nb_under', 'sum_pb_jjak');
+                break;
+            case 43:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_holu', 'sum_nb_over', 'sum_pb_holu');
+                break;
+            case 44:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_holu', 'sum_nb_over', 'sum_pb_jjak');
+                break;
+            case 45:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_jjak', 'sum_nb_under', 'sum_pb_holu');
+                break;
+            case 46:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_jjak', 'sum_nb_under', 'sum_pb_jjak');
+                break;
+            case 47:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_jjak', 'sum_nb_over', 'sum_pb_holu');
+                break;
+            case 48:
+                $this->roundstatAddSplit3($sums, $w, 'sum_nb_jjak', 'sum_nb_over', 'sum_pb_jjak');
+                break;
+            default:
+                break;
+        }
+    }
+
+    private function roundstatFetchBetsForFids($nGameId, array $fids){
+        $fids = array_values(array_unique(array_filter(array_map('intval', $fids))));
+        if(count($fids) < 1){
+            return array();
+        }
+        $gid = (int) $nGameId;
+        if(count($fids) > 100){
+            $fids = array_slice($fids, 0, 100);
+        }
+        $in = implode(',', $fids);
+        $sql = "SELECT bet_round_fid, bet_money, bet_ratio, bet_mode FROM ".$this->mTableName." WHERE "
+            . "bet_game='".$this->db->escape_str((string) $gid)."' AND bet_state != ".((int) BET_CANCEL)." AND bet_round_fid IN (".$in.")";
+        $query = $this->db->query($sql);
+        return $query ? $query->result() : array();
+    }
+
+    private function roundstatGroupBetsByRoundFid($rows){
+        $g = array();
+        foreach($rows as $row){
+            $rk = isset($row->bet_round_fid) ? (int) $row->bet_round_fid : 0;
+            if(!isset($g[$rk])){
+                $g[$rk] = array();
+            }
+            $g[$rk][] = $row;
+        }
+        return $g;
+    }
+
+    private function sumsToAggregateRow($betRoundFid, $betRoundNo, array $sums){
+        return (object) array(
+            'bet_round_fid' => (int) $betRoundFid,
+            'bet_round_no' => (int) $betRoundNo,
+            'sum_pb_holu' => (int) $sums['sum_pb_holu'],
+            'sum_pb_jjak' => (int) $sums['sum_pb_jjak'],
+            'sum_pb_under' => (int) $sums['sum_pb_under'],
+            'sum_pb_over' => (int) $sums['sum_pb_over'],
+            'sum_nb_holu' => (int) $sums['sum_nb_holu'],
+            'sum_nb_jjak' => (int) $sums['sum_nb_jjak'],
+            'sum_nb_under' => (int) $sums['sum_nb_under'],
+            'sum_nb_over' => (int) $sums['sum_nb_over'],
+        );
+    }
+
+    /**
+     * 본사 회차별통계: 최근 N회차. 값 = floor(배팅금액×배당) 합; 2묶음/3묶음 분할 반영 (배팅 없는 회차도 0행)
+     */
+    function aggregateSimpleModesByRound($nGameId, $nLimit){
+
+        $nLimit = (int) $nLimit;
+        if($nLimit < 1) $nLimit = 9;
+        if($nLimit > 50) $nLimit = 50;
+        $gid = (int) $nGameId;
+
+        $sqlRounds = "
+			SELECT round_fid, round_num, round_date FROM round_pball
+			WHERE round_game = ".$gid."
+			ORDER BY round_date DESC, round_num DESC
+			LIMIT ".$nLimit;
+        $rq = $this->db->query($sqlRounds);
+        $rounds = $rq ? $rq->result() : array();
+        $fids = array();
+        foreach($rounds as $r){
+            $fids[] = (int) $r->round_fid;
+        }
+        $betRows = $this->roundstatFetchBetsForFids($gid, $fids);
+        $byFid = $this->roundstatGroupBetsByRoundFid($betRows);
+
+        $out = array();
+        foreach($rounds as $r){
+            $fid = (int) $r->round_fid;
+            $sums = $this->roundstatEmptySums();
+            if(isset($byFid[$fid])){
+                foreach($byFid[$fid] as $b){
+                    $this->roundstatApplyBet($sums, $b->bet_money, $b->bet_ratio, $b->bet_mode);
+                }
+            }
+            $out[] = $this->sumsToAggregateRow($fid, (int) $r->round_num, $sums);
+        }
+        return $out;
+
+    }
+
+    /**
+     * 진행 회차 한 줄: bet_round_fid 기준 배팅×배당 집계(조합 분할 규칙 동일)
+     */
+    function aggregateBetsForRound($nGameId, $roundFid, $roundNo){
+
+        $gid = (int) $nGameId;
+        $fid = (int) $roundFid;
+        $no = (int) $roundNo;
+
+        $sums = $this->roundstatEmptySums();
+        $sql = "
+			SELECT bet_money, bet_ratio, bet_mode FROM ".$this->mTableName."
+			WHERE bet_game = '".$this->db->escape_str((string) $gid)."'
+				AND bet_round_fid = '".$this->db->escape_str((string) $fid)."'
+				AND bet_state != ".(int) BET_CANCEL;
+        $query = $this->db->query($sql);
+        if($query){
+            foreach($query->result() as $b){
+                $this->roundstatApplyBet($sums, $b->bet_money, $b->bet_ratio, $b->bet_mode);
+            }
+        }
+
+        return $this->sumsToAggregateRow($fid, $no, $sums);
+
+    }
+
 }

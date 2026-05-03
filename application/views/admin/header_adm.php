@@ -41,12 +41,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     </div> 
                     <li class="el-menu-item <?=$menuitem_1?>" onclick="clickMenu(1);">총판관리</li> 
                     <li class="el-menu-item <?=$menuitem_2?>" onclick="clickMenu(2);">매일통계</li> 
-                    <li class="el-menu-item <?=$menuitem_3?>" onclick="clickMenu(3);">총판충전신청</li> 
-                    <li class="el-menu-item <?=$menuitem_4?>" onclick="clickMenu(4);">총판환전신청</li> 
-                    <li class="el-menu-item <?=$menuitem_5?>" onclick="clickMenu(5);">충환전내역</li> 
-                    <li class="el-menu-item <?=$menuitem_6?>" onclick="clickMenu(6);">공지</li> 
-                    <li class="el-menu-item <?=$menuitem_7?>" onclick="clickMenu(7);">총판거래내역</li> 
-                    <li class="el-menu-item <?=$menuitem_8?>" onclick="clickMenu(8);">아이피추적</li> 
+                    <li class="el-menu-item <?=$menuitem_3?>" onclick="clickMenu(3);">회차별통계</li> 
+                    <li class="el-menu-item <?=$menuitem_4?>" onclick="clickMenu(4);">총판충전신청</li> 
+                    <li class="el-menu-item <?=$menuitem_5?>" onclick="clickMenu(5);">총판환전신청</li> 
+                    <li class="el-menu-item <?=$menuitem_6?>" onclick="clickMenu(6);">충환전내역</li> 
+                    <li class="el-menu-item <?=$menuitem_7?>" onclick="clickMenu(7);">공지</li> 
+                    <li class="el-menu-item <?=$menuitem_8?>" onclick="clickMenu(8);">총판거래내역</li> 
+                    <li class="el-menu-item <?=$menuitem_9?>" onclick="clickMenu(9);">아이피추적</li> 
                     <!-- <li class="el-menu-item <?=$menuitem_9?>" onclick="clickMenu(9);">구매변경</li>  -->
                     <li class="el-menu-item"  onclick="clickMenu(10);">로그아웃</li>
                 </ul>

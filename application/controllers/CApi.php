@@ -1183,5 +1183,185 @@ class CApi extends CI_Controller {
 
 	}
 
+	private function admRoundstatUnlocked(){
+
+		return $this->session->userdata('adm_roundstat_ok') == 1;
+	}
+
+	/** PB 파워볼 현재 회차·배팅구간 (Api::pbcurrentgame 과 동일 산출) */
+	private function buildPbRoundstatContext(&$arrBetPhaseOut = null){
+
+		$this->load->model('pbround_model');
+		$this->load->model('confgame_model');
+
+		$gameId = GAME_POWERBALL;
+		$objConfigPb = $this->confgame_model->getByIndex($gameId);
+		if(is_null($objConfigPb)){
+			$objConfigPb = new StdClass;
+			$objConfigPb->game_bet_permit = 1;
+			$objConfigPb->game_time_countdown = 90;
+			$objConfigPb->game_index = $gameId;
+		}
+
+		$arrRound = $this->pbround_model->gets($gameId, 1);
+		if(count($arrRound) > 0){
+			$arrRoundData = pballRoundTimesAfterLastRow($arrRound[0], $objConfigPb);
+			calcRoundId($arrRound[0], $arrRoundData);
+			pballMergeSlotTimesFromClock($arrRoundData, $objConfigPb);
+			$arrRoundData['last_round_fid'] = (int) $arrRound[0]->round_fid;
+			$arrRoundData['last_round_num'] = (int) $arrRound[0]->round_num;
+		} else {
+			$arrRoundData = getPballRoundTimes($objConfigPb);
+			$arrRoundData['round_id'] = 10001;
+		}
+
+		$tmCurrent = strtotime($arrRoundData['round_current']);
+		$tmRoundStart = strtotime($arrRoundData['round_start']);
+		$tmRoundEnd = strtotime("+5 minutes", $tmRoundStart);
+		if($objConfigPb->game_time_countdown >= 20 && $objConfigPb->game_time_countdown <= 250){
+			$tmRoundBetEnd = strtotime("-".$objConfigPb->game_time_countdown." seconds", $tmRoundEnd);
+		} else {
+			$tmRoundBetEnd = strtotime("-30 seconds", $tmRoundEnd);
+		}
+
+		$betting_open = ($tmCurrent >= $tmRoundStart && $tmCurrent <= $tmRoundBetEnd);
+		$sec_bet_close = max(0, $tmRoundBetEnd - $tmCurrent);
+		$sec_round_end = max(0, $tmRoundEnd - $tmCurrent);
+
+		if($arrBetPhaseOut !== null){
+			$arrBetPhaseOut = array(
+				'betting_open' => $betting_open,
+				'tm_round_bet_end' => $tmRoundBetEnd,
+				'tm_round_end' => $tmRoundEnd,
+				'tm_current' => $tmCurrent
+			);
+		}
+
+		/* 추첨(라운드 종료)까지: 유저쪽 betcloserest와 동일하게 배팅 중에도 round_end 기준 카운트다운 */
+		$nUntilDraw = (int) $tmRoundEnd;
+		$payload = array(
+			'server_time' => date('H:i:s', $tmCurrent),
+			'server_unix' => (int) $tmCurrent,
+			'countdown_until_unix' => $nUntilDraw,
+			'round_draw_end_unix' => $nUntilDraw,
+			'round_bet_end_unix' => (int) $tmRoundBetEnd,
+			'round_id' => isset($arrRoundData['round_id']) ? (int) $arrRoundData['round_id'] : 0,
+			'round_no' => isset($arrRoundData['round_no']) ? (int) $arrRoundData['round_no'] : 0,
+			'round_date' => isset($arrRoundData['round_date']) ? $arrRoundData['round_date'] : '',
+			'betting_open' => $betting_open,
+			'countdown_sec' => $sec_round_end,
+			'phase_label' => $betting_open ? '배팅중' : '배팅종료'
+		);
+		return array($payload, $arrRoundData);
+	}
+
+	public function roundstatunlock(){
+
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arr = json_decode($jsonData, true);
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL)){
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+
+		if(!is_array($arr) || !isset($arr['pwd'])){
+			echo json_encode(array('status' => 'fail', 'data' => 1));
+			return;
+		}
+
+		$this->load->model('confsite_model');
+		$dbPwd = $this->confsite_model->getRoundStatPassword();
+		if(strcmp((string) $arr['pwd'], $dbPwd) === 0){
+			$this->session->set_userdata('adm_roundstat_ok', 1);
+			echo json_encode(array('status' => 'success'));
+		} else {
+			echo json_encode(array('status' => 'fail', 'data' => 2));
+		}
+	}
+
+	public function roundstatchgpwd(){
+
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arr = json_decode($jsonData, true);
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL) || !$this->admRoundstatUnlocked()){
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+
+		if(!is_array($arr) || !isset($arr['old_pwd']) || !isset($arr['new_pwd'])){
+			echo json_encode(array('status' => 'fail', 'data' => 1));
+			return;
+		}
+
+		$this->load->model('confsite_model');
+		if(strcmp($this->confsite_model->getRoundStatPassword(), (string) $arr['old_pwd']) !== 0){
+			echo json_encode(array('status' => 'fail', 'data' => 2));
+			return;
+		}
+
+		if($this->confsite_model->saveRoundStatPassword($arr['new_pwd'])){
+			echo json_encode(array('status' => 'success'));
+		} else {
+			echo json_encode(array('status' => 'fail', 'data' => 3));
+		}
+	}
+
+	public function roundstatcontext(){
+
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL) || !$this->admRoundstatUnlocked()){
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+
+		$phase = array();
+		$built = $this->buildPbRoundstatContext($phase);
+		if($built === null){
+			echo json_encode(array('status' => 'fail'));
+			return;
+		}
+		list($payload, $arrRoundData) = $built;
+		echo json_encode(array(
+			'status' => 'success',
+			'data' => $payload,
+			'extra' => $arrRoundData /* 클라이언트 확장용 */
+		));
+	}
+
+	public function roundstatrows(){
+
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL) || !$this->admRoundstatUnlocked()){
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+
+		$nLimit = (int) $this->input->get('limit');
+		$nHist = $nLimit > 0 ? $nLimit : 9;
+		$this->load->model('pbbet_model');
+
+		$tmpPhase = array();
+		$built = $this->buildPbRoundstatContext($tmpPhase);
+		$rowsOut = array();
+		if(is_array($built)){
+			list($payload, $_extra) = $built;
+			$liveRow = $this->pbbet_model->aggregateBetsForRound(
+				GAME_POWERBALL,
+				isset($payload['round_id']) ? (int) $payload['round_id'] : 0,
+				isset($payload['round_no']) ? (int) $payload['round_no'] : 0
+			);
+			$rowsOut[] = $liveRow;
+		}
+
+		$histRows = $this->pbbet_model->aggregateSimpleModesByRound(GAME_POWERBALL, $nHist);
+		foreach($histRows as $h){
+			$rowsOut[] = $h;
+		}
+
+		echo json_encode(array('status' => 'success', 'data' => $rowsOut));
+	}
+
 
 }

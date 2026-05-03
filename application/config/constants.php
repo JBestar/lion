@@ -103,6 +103,7 @@ defined('GAME_EOS_5')           || define('GAME_EOS_5', 2);
 defined('CONF_SITENAME')       || define('CONF_SITENAME', 1);
 defined('CONF_MAINTAIN')       || define('CONF_MAINTAIN', 10);
 defined('CONF_PBG_ACC')        || define('CONF_PBG_ACC', 14);
+defined('CONF_ROUNDSTAT_PWD')  || define('CONF_ROUNDSTAT_PWD', 15);
 
 //Money History
 defined('MONEYCHANGE_PRESENT')   || define('MONEYCHANGE_PRESENT', 0); 

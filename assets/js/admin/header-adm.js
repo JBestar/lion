@@ -15,18 +15,20 @@
         } else if(iMenu == 2){
             location.href = "/admin/statist"+location.search;
         } else if(iMenu == 3){
-            location.href = "/admin/charge"+location.search;
+            location.href = "/admin/roundstat"+location.search;
         } else if(iMenu == 4){
-            location.href = "/admin/discharge"+location.search;
+            location.href = "/admin/charge"+location.search;
         } else if(iMenu == 5){
-            location.href = "/admin/transform"+location.search;
+            location.href = "/admin/discharge"+location.search;
         } else if(iMenu == 6){
-            location.href = "/admin/message"+location.search;
+            location.href = "/admin/transform"+location.search;
         } else if(iMenu == 7){
-            location.href = "/admin/exchange"+location.search;
+            location.href = "/admin/message"+location.search;
         } else if(iMenu == 8){
-            location.href = "/admin/trace"+location.search;
+            location.href = "/admin/exchange"+location.search;
         } else if(iMenu == 9){
+            location.href = "/admin/trace"+location.search;
+        } else if(iMenu == 11){
             location.href = "/admin/order"+location.search;
         } else if(iMenu == 10){
             location.href = "/admin/logout"+location.search;
