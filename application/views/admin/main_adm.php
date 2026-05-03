@@ -53,6 +53,7 @@
                         <col name="el-table_26_column_183" width="150" />
                         <col name="el-table_26_column_184" width="150" />
                         <col name="el-table_26_column_185" width="150" />
+                        <col name="el-table_26_column_186" width="100" />
                     </colgroup>
                     <thead class="has-gutter">
                         <tr class="">
@@ -65,6 +66,7 @@
                             <th colspan="1" rowspan="1" class="el-table_26_column_183 is-leaf"><div class="cell">가입날짜</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_184 is-leaf"><div class="cell">로그인날짜</div></th>
                             <th colspan="1" rowspan="1" class="el-table_26_column_185 is-leaf"><div class="cell">기능</div></th>
+                            <th colspan="1" rowspan="1" class="el-table_26_column_186 is-leaf"><div class="cell">상태</div></th>
                             
                         </tr>
                     </thead>
@@ -90,6 +92,7 @@
                                     </button>
                                 </div>
                             </td>
+                            <td><div class="cell"></div></td>
                         </tr>
 
                     </tbody>

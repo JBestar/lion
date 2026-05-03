@@ -108,6 +108,30 @@ class Sess_model extends CI_Model {
 
     }
 
+    /**
+     * 총판(mb_fid)별로 하부 매장(MEMBER_EMPLOYEE_LEVEL) 세션이 하나 이상 있는지 일괄 조회.
+     * @param int[] $arrAgencyFids
+     * @return int[] sess_emp_fid 값 중 세션이 존재하는 총판 fid 목록
+     */
+    public function getAgencyFidsWithActiveEmployeeSession($arrAgencyFids){
+
+        if(!is_array($arrAgencyFids) || count($arrAgencyFids) < 1)
+            return array();
+
+        $this->db->distinct();
+        $this->db->select('sess_emp_fid');
+        $this->db->from($this->mTableName);
+        $this->db->where('sess_mb_level', MEMBER_EMPLOYEE_LEVEL);
+        $this->db->where_in('sess_emp_fid', $arrAgencyFids);
+        $arrRows = $this->db->get()->result();
+
+        $arrOut = array();
+        foreach($arrRows as $objRow){
+            $arrOut[] = (int) $objRow->sess_emp_fid;
+        }
+        return $arrOut;
+    }
+
 
 
 }

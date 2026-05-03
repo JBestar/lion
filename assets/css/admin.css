@@ -52181,3 +52181,15 @@ html.overflow-y-hidden {
     font-size: 13px;
 }
 
+/* 본사 총판관리: 하부 매장 로그인 시 상태 표시 */
+.adm-distributor-status-online {
+    display: inline-block;
+    padding: 2px 8px;
+    color: #f56c6c;
+    border: 1px solid #f56c6c;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+

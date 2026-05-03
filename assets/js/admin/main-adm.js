@@ -3,6 +3,7 @@ var m_arrEmployee = null;
 $(document).ready(function(){
    
     requestEmployee();
+    setInterval(requestEmployee, 30000);
     
 });
 
@@ -272,7 +273,17 @@ function showEmployeeData(arrEmployee){
             tHtml2 += "<button type=\"button\" onclick=\"modifyEmpDlg("+idx+");\" class=\"el-button el-button--primary el-button--mini\"><span>수정</span></button>";
             tHtml2 += "<button type=\"button\" onclick=\"deleteEmployee("+idx+");\" class=\"el-button el-button--danger el-button--mini\"><span>삭제</span></button>";
             
-            tHtml1 += "</div></td></tr>";   tHtml2 += "</div></td></tr>";
+            tHtml1 += "</div></td>";   tHtml2 += "</div></td>";
+
+            tHtml1 += tTd1;
+            if(parseInt(arrEmployee[idx].mb_substore_online, 10) === 1){
+                tHtml1 += "<span class=\"adm-distributor-status-online\">접속중</span>";
+            }
+            tHtml1 += "</div></td>";
+            tHtml2 += tTd2;
+            tHtml2 += "</div></td>";
+
+            tHtml1 += "</tr>";   tHtml2 += "</tr>";
         }
 
     }

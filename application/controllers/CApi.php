@@ -177,6 +177,17 @@ class CApi extends CI_Controller {
 			
 			$objUser->mb_fid = 0;
 			$arrEmployee = $this->member_model->getEmployee($objUser, MEMBER_AGENCY_LEVEL);
+
+			$this->load->model('sess_model');
+			$arrAgencyFids = array();
+			foreach($arrEmployee as $objAgency){
+				$arrAgencyFids[] = (int) $objAgency->mb_fid;
+			}
+			$arrActiveAgencyFids = $this->sess_model->getAgencyFidsWithActiveEmployeeSession($arrAgencyFids);
+			$arrActiveSet = array_flip($arrActiveAgencyFids);
+			foreach($arrEmployee as $objAgency){
+				$objAgency->mb_substore_online = isset($arrActiveSet[(int) $objAgency->mb_fid]) ? 1 : 0;
+			}
 			
 			$arrResult['data'] = $arrEmployee;
 	 		$arrResult['status'] = "success";				
