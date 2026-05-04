@@ -52346,6 +52346,18 @@ html.overflow-y-hidden {
     white-space: nowrap;
     overflow: visible;
 }
+
+/* 진행 회차(첫 행): 홀vs짝·언더vs오버 등 짝별로 합계가 더 작은 쪽 */
+.roundstat-table tbody tr:first-child td[data-rscell] {
+    transition: background-color 0.35s ease, box-shadow 0.35s ease;
+}
+.roundstat-table tbody tr:first-child td.roundstat-live-min {
+    background-color: #fff3e6 !important;
+    box-shadow: inset 0 0 0 2px rgba(230, 162, 60, 0.55);
+}
+.roundstat-table tbody tr:first-child td.roundstat-live-min > .cell {
+    border-radius: 4px;
+}
 .roundstat-table th, .roundstat-table td { padding: 10px 8px; border-bottom: 1px solid #ebeef5; font-size: 13px; text-align: center; vertical-align: middle; box-sizing: border-box; min-height: 40px; }
 
 .roundstat-table thead th {

@@ -16,6 +16,14 @@ var RS_EXCLUSIVE = {
 	nb_under: ["nb_over"], nb_over: ["nb_under"]
 };
 
+/** 첫 행(진행 회차): 합계 금액 비교용 열 키 — RS_EXCLUSIVE 쌍과 동일 순서 */
+var RS_LIVE_COMPARE_PAIRS = [
+	["pb_holu", "pb_jjak"],
+	["pb_under", "pb_over"],
+	["nb_holu", "nb_jjak"],
+	["nb_under", "nb_over"]
+];
+
 var RS_KEY_LABELS = {
 	pb_holu: "파워볼홀",
 	pb_jjak: "파워볼짝",
@@ -174,6 +182,47 @@ function peerBlockedWithoutSelecting(key){
 	return false;
 }
 
+function rsCellSum(r, key){
+	switch(key){
+		case "pb_holu": return parseInt(r.sum_pb_holu, 10) || 0;
+		case "pb_jjak": return parseInt(r.sum_pb_jjak, 10) || 0;
+		case "pb_under": return parseInt(r.sum_pb_under, 10) || 0;
+		case "pb_over": return parseInt(r.sum_pb_over, 10) || 0;
+		case "nb_holu": return parseInt(r.sum_nb_holu, 10) || 0;
+		case "nb_jjak": return parseInt(r.sum_nb_jjak, 10) || 0;
+		case "nb_under": return parseInt(r.sum_nb_under, 10) || 0;
+		case "nb_over": return parseInt(r.sum_nb_over, 10) || 0;
+		default: return 0;
+	}
+}
+
+/** 맨 위 행(진행 회차): 대응 열 쌍에서 합계가 더 작은 쪽만 하이라이트 (동률이면 둘 다 해제) */
+function rsApplyLiveRowMinHighlight(){
+
+	var $tr = $("#roundstat-tbody-id tr:first");
+	if(!$tr.length){
+		return;
+	}
+	$tr.find("td[data-rscell]").removeClass("roundstat-live-min");
+
+	for(var p = 0; p < RS_LIVE_COMPARE_PAIRS.length; p++){
+		var a = RS_LIVE_COMPARE_PAIRS[p][0];
+		var b = RS_LIVE_COMPARE_PAIRS[p][1];
+		var $ta = $tr.find('td[data-rscell="' + a + '"]');
+		var $tb = $tr.find('td[data-rscell="' + b + '"]');
+		if(!$ta.length || !$tb.length){
+			continue;
+		}
+		var va = parseInt($ta.attr("data-rs-sum"), 10) || 0;
+		var vb = parseInt($tb.attr("data-rs-sum"), 10) || 0;
+		if(va < vb){
+			$ta.addClass("roundstat-live-min");
+		} else if(vb < va){
+			$tb.addClass("roundstat-live-min");
+		}
+	}
+}
+
 function rsRenderRows(arr){
 	var html = "";
 	if(arr && arr.length > 0){
@@ -182,21 +231,33 @@ function rsRenderRows(arr){
 			var fid = r.bet_round_fid != null ? String(r.bet_round_fid) : "";
 			var rn = r.bet_round_no != null ? String(r.bet_round_no) : "";
 			var label = fid && rn ? (fid + "(" + rn + ")회") : (fid || rn || "—");
+			var isLive = i === 0;
 			html += "<tr>";
 			html += "<td><div class=\"cell\">PBG</div></td>";
 			html += "<td><div class=\"cell roundstat-cell-round\">" + label + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_holu) + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_jjak) + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_under) + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_over) + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_holu) + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_jjak) + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_under) + "</div></td>";
-			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_over) + "</div></td>";
+
+			if(isLive){
+				var k = ["pb_holu", "pb_jjak", "pb_under", "pb_over", "nb_holu", "nb_jjak", "nb_under", "nb_over"];
+				for(var c = 0; c < k.length; c++){
+					var kk = k[c];
+					var sum = rsCellSum(r, kk);
+					html += "<td data-rscell=\"" + kk + "\" data-rs-sum=\"" + sum + "\"><div class=\"cell\">" + rsFmtWon(r["sum_" + kk]) + "</div></td>";
+				}
+			} else {
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_holu) + "</div></td>";
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_jjak) + "</div></td>";
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_under) + "</div></td>";
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_over) + "</div></td>";
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_holu) + "</div></td>";
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_jjak) + "</div></td>";
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_under) + "</div></td>";
+				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_over) + "</div></td>";
+			}
 			html += "</tr>";
 		}
 	}
 	$("#roundstat-tbody-id").html(html);
+	rsApplyLiveRowMinHighlight();
 }
 
 function requestRoundstatContext(){
