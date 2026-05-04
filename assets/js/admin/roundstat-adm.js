@@ -9,6 +9,8 @@ var m_rsDrawEndUnix = null;
 var m_rsBetEndUnix = null;
 var m_rsPollPerfMs = null;
 var m_rsContextFailBanner = false;
+/** roundstatcontext: 다음 추첨 시각에 대응하는 PBG drawn_at 슬롯 (안내·불일치 경고용) */
+var m_rsPbgDrawnAtSlot = null;
 var RS_EXCLUSIVE = {
 	pb_holu: ["pb_jjak"], pb_jjak: ["pb_holu"],
 	pb_under: ["pb_over"], pb_over: ["pb_under"],
@@ -284,6 +286,8 @@ function requestRoundstatContext(){
 			m_rsContextFailBanner = false;
 
 			m_rsBettingOpen = !!j.data.betting_open;
+			m_rsPbgDrawnAtSlot = (j.data.pbg_drawn_at_slot != null && String(j.data.pbg_drawn_at_slot).length > 0)
+				? String(j.data.pbg_drawn_at_slot).trim() : null;
 
 			var rid = (j.data.round_id !== undefined && j.data.round_id !== null && j.data.round_id !== "") ? j.data.round_id : "—";
 			var rno = (j.data.round_no !== undefined && j.data.round_no !== null && j.data.round_no !== "") ? j.data.round_no : "—";
@@ -401,11 +405,18 @@ function admRoundstatQueueConstraintNow(){
 				return;
 			}
 			if(j.status === "success"){
-				var at = (j.drawn_at != null) ? j.drawn_at : (j.data && j.data.drawn_at ? j.data.drawn_at : "");
+				var at = (j.drawn_at != null) ? String(j.drawn_at).trim() : (j.data && j.data.drawn_at ? String(j.data.drawn_at).trim() : "");
 				var cond = rsSelectedLabelsForKeys(keys);
-				var msg = "파워볼 추첨 서버가 추첨변경 요청을 정상적으로 접수했습니다. 선택하신 조건(" + cond + ")이 이번 회차 추첨 전달 내용에 반영됩니다.";
+				var msg = "";
 				if(at){
-					msg += " (적용 슬롯 " + at + ")";
+					msg = "PBG 추첨 적용 시각(KST): " + at + "\n";
+					msg += "※ 위 시각의 5분 슬롯 추첨에만 조건이 반영됩니다. (다른 시각이면 적용되지 않습니다.)\n\n";
+				} else {
+					msg = "파워볼 추첨 서버가 요청을 접수했습니다.\n\n";
+				}
+				msg += "조건: " + cond;
+				if(m_rsPbgDrawnAtSlot && at && m_rsPbgDrawnAtSlot !== at){
+					msg += "\n\n[확인] 직전 화면에 표시된 진행 회차 종료 슬롯(" + m_rsPbgDrawnAtSlot + ")과 접수된 슬롯이 다릅니다.\n요청 순간 서버가 계산한 '다음 추첨' 슬롯이 적용됩니다. 원하는 회차와 같다면 슬롯을 다시 확인하세요.";
 				}
 				if(typeof showAlertBox === "function"){
 					showAlertBox(0, msg);
