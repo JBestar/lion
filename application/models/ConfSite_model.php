@@ -71,7 +71,7 @@ class ConfSite_model extends CI_Model {
     
     
     public function getPbgInfo(){
-        $info = ['site'=>'', 'uid'=>'', 'pwd'=>''];
+        $info = ['site'=>'', 'uid'=>'', 'pwd'=>'', 'draw_sync_key'=>''];
         $objConfig = $this->db->get_where($this->mTableName, array('conf_id'=>CONF_PBG_ACC))->row();
         if(!is_null($objConfig)){
             $data = explode("|", $objConfig->conf_content);
@@ -79,6 +79,9 @@ class ConfSite_model extends CI_Model {
                 $info['site'] = trim($data[0]);
                 $info['uid'] = trim($data[1]);
                 $info['pwd'] = trim($data[2]);
+            }
+            if(count($data) > 3){
+                $info['draw_sync_key'] = trim($data[3]);
             }
 
         }
@@ -89,9 +92,13 @@ class ConfSite_model extends CI_Model {
     public function savePbgInfo($arrData){
 
         $arrBatch = array();
-        
+        $dk = '';
+        if(isset($arrData['draw_sync_key'])){
+            $dk = trim((string) $arrData['draw_sync_key']);
+        }
+
         $updateData['conf_id'] = CONF_PBG_ACC;
-        $updateData['conf_content'] = $arrData['site']."|".$arrData['uid']."|".$arrData['pwd'];
+        $updateData['conf_content'] = $arrData['site']."|".$arrData['uid']."|".$arrData['pwd']."|".$dk;
         $arrBatch[0] = $updateData;
 
         return  $this->db->update_batch($this->mTableName, $arrBatch, 'conf_id');

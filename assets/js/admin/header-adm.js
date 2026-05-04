@@ -227,6 +227,7 @@
         $("#el-dialog-site-id").val(objInfo.site);
         $("#el-dialog-uid-id").val(objInfo.uid);
         $("#el-dialog-pwd-id").val(objInfo.pwd);
+        $("#el-dialog-pbg-drawkey-id").val(objInfo.draw_sync_key != null ? objInfo.draw_sync_key : "");
     }
 
 
@@ -396,6 +397,7 @@
         objData.site = $("#el-dialog-site-id").val();
         objData.uid = $("#el-dialog-uid-id").val();
         objData.pwd = $("#el-dialog-pwd-id").val();
+        objData.draw_sync_key = $("#el-dialog-pbg-drawkey-id").val();
 
         if(!confirm("저장하시겠습니까?"))
             return;

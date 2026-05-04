@@ -52238,6 +52238,53 @@ html.overflow-y-hidden {
     flex-shrink: 0;
 }
 
+/* 회차별통계 — 암호변경: 배경·호버·클릭 (폰트는 el-button 상속 유지) */
+.roundstat-toolbar .roundstat-chgpwd-at-end.el-button--default {
+    cursor: pointer;
+    border: 1px solid rgba(74, 107, 154, 0.45) !important;
+    border-radius: 8px !important;
+    padding: 8px 18px !important;
+    min-width: 96px;
+    color: #fff !important;
+    background: linear-gradient(165deg, #5c7cba 0%, #4a6598 48%, #3d5685 100%) !important;
+    box-shadow:
+        0 2px 6px rgba(61, 86, 133, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    transition:
+        background 0.22s ease,
+        box-shadow 0.22s ease,
+        transform 0.15s ease,
+        border-color 0.22s ease,
+        filter 0.18s ease;
+}
+.roundstat-toolbar .roundstat-chgpwd-at-end.el-button--default:hover {
+    cursor: pointer;
+    border-color: rgba(92, 139, 190, 0.75) !important;
+    background: linear-gradient(165deg, #6d8ec9 0%, #5774a8 50%, #46608f 100%) !important;
+    box-shadow:
+        0 5px 14px rgba(61, 86, 133, 0.38),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+}
+.roundstat-toolbar .roundstat-chgpwd-at-end.el-button--default:active {
+    cursor: pointer;
+    transform: translateY(0);
+    border-color: rgba(45, 70, 112, 0.9) !important;
+    background: linear-gradient(165deg, #46608f 0%, #3d5685 52%, #354c78 100%) !important;
+    box-shadow:
+        inset 0 2px 8px rgba(20, 35, 58, 0.35),
+        0 1px 3px rgba(61, 86, 133, 0.2);
+    filter: brightness(0.96);
+}
+.roundstat-toolbar .roundstat-chgpwd-at-end.el-button--default:focus {
+    outline: none;
+}
+.roundstat-toolbar .roundstat-chgpwd-at-end.el-button--default:focus-visible {
+    outline: 2px solid #8eb4e8;
+    outline-offset: 2px;
+}
+
 /* 추첨변경: 활성/비활성 구분을 명확히 */
 .roundstat-drawchange-btn {
     transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, opacity .2s ease, filter .2s ease;
@@ -52318,4 +52365,8 @@ html.overflow-y-hidden {
 .roundstat-table thead .roundstat-selectable-th.is-blocked-peer { opacity: .45; cursor: not-allowed !important; }
 
 .roundstat-mini-dialog { margin-top: 10vh; width: 400px; }
+
+.roundstat-pbg-draw-dlg { width: 460px !important; max-width: 94vw; }
+.roundstat-pbg-draw-hint { font-size: 12px; color: #606266; margin: 0 0 14px 0; line-height: 1.5; }
+.roundstat-pbg-draw-msg { min-height: 20px; font-size: 13px; margin-top: 8px; }
 

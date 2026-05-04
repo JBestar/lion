@@ -9,13 +9,31 @@ var m_rsDrawEndUnix = null;
 var m_rsBetEndUnix = null;
 var m_rsPollPerfMs = null;
 var m_rsContextFailBanner = false;
-
 var RS_EXCLUSIVE = {
 	pb_holu: ["pb_jjak"], pb_jjak: ["pb_holu"],
 	pb_under: ["pb_over"], pb_over: ["pb_under"],
 	nb_holu: ["nb_jjak"], nb_jjak: ["nb_holu"],
 	nb_under: ["nb_over"], nb_over: ["nb_under"]
 };
+
+var RS_KEY_LABELS = {
+	pb_holu: "파워볼홀",
+	pb_jjak: "파워볼짝",
+	pb_under: "파워볼언더",
+	pb_over: "파워볼오버",
+	nb_holu: "일반볼홀",
+	nb_jjak: "일반볼짝",
+	nb_under: "일반볼언더",
+	nb_over: "일반볼오버"
+};
+
+function rsSelectedLabelsForKeys(keys){
+	var out = [];
+	for(var i = 0; i < keys.length; i++){
+		out.push(RS_KEY_LABELS[keys[i]] || keys[i]);
+	}
+	return out.join(", ");
+}
 
 function rsFmtWon(n){
 	var x = parseInt(n, 10) || 0;
@@ -95,7 +113,7 @@ function rsUpdateDrawChangeBtn(){
 	$b.toggleClass("roundstat-drawchange-btn--ready", ok);
 	$b.toggleClass("roundstat-drawchange-btn--locked", !ok);
 	$b.attr("title", ok
-		? "배팅마감이며 결과 열을 선택했습니다. 클릭 시 PBG 추첨 설정을 엽니다."
+		? "배팅마감이며 열을 선택한 뒤 한 번 클릭하면 파워볼 서버로 추첨변경 요청이 곧바로 전달됩니다."
 		: "배팅마감 이면서 파워볼·일반볼 열 중 하나 이상 선택 시 사용할 수 있습니다.");
 }
 
@@ -279,16 +297,79 @@ function unlockRoundstat(pwd){
 	});
 }
 
-function admRoundstatOpenPbgIfAllowed(){
+/** 추첨변경: 확인·다이얼로그 없이 즉시 파워볼(PBG) 큐 API 호출 */
+function admRoundstatQueueConstraintNow(){
 
 	if($("#roundstat-drawchange-btn").prop("disabled")){
 		return;
 	}
-	if(typeof showPbgDlg === "function"){
-		showPbgDlg();
-	} else {
-		showMessageBox(1, "PBG 설정은 상단 헤더 스크립트가 필요합니다.");
+	var keys = [];
+	for(var k in m_rsSelected){
+		if(m_rsSelected[k]) keys.push(k);
 	}
+	if(keys.length < 1){
+		if(typeof showMessageBox === "function"){
+			showMessageBox(1, "적용할 열을 표에서 먼저 선택하세요.");
+		}
+		return;
+	}
+	var $btn = $("#roundstat-drawchange-btn");
+	if($btn.data("rs-sending")){
+		return;
+	}
+	var $span = $btn.find("span");
+	var prevText = $span.text();
+	$btn.data("rs-sending", true).prop("disabled", true);
+	$span.text("전송 중…");
+
+	$.ajax({
+		type: "POST",
+		dataType: "json",
+		data: { json_: JSON.stringify({ keys: keys }) },
+		url: "/capi/roundstatpbgqueueconstraint" + location.search,
+		complete: function(){
+
+			$btn.data("rs-sending", false);
+			$span.text(prevText);
+			rsUpdateDrawChangeBtn();
+		},
+		success: function(j){
+
+			if(j.status === "logout"){
+				location.reload();
+				return;
+			}
+			if(j.status === "success"){
+				var at = (j.drawn_at != null) ? j.drawn_at : (j.data && j.data.drawn_at ? j.data.drawn_at : "");
+				var cond = rsSelectedLabelsForKeys(keys);
+				var msg = "파워볼 추첨 서버가 추첨변경 요청을 정상적으로 접수했습니다. 선택하신 조건(" + cond + ")이 이번 회차 추첨 전달 내용에 반영됩니다.";
+				if(at){
+					msg += " (적용 슬롯 " + at + ")";
+				}
+				if(typeof showAlertBox === "function"){
+					showAlertBox(0, msg);
+				} else {
+					alert(msg);
+				}
+				return;
+			}
+			var m = j.msg ? j.msg : "요청 실패";
+			if(j.remote && j.remote.msg){
+				m += " — " + j.remote.msg;
+			} else if(j.raw){
+				m += " — " + String(j.raw).slice(0, 120);
+			}
+			if(typeof showMessageBox === "function"){
+				showMessageBox(1, m);
+			}
+		},
+		error: function(){
+
+			if(typeof showMessageBox === "function"){
+				showMessageBox(1, "네트워크 오류로 요청을 보내지 못했습니다.");
+			}
+		}
+	});
 }
 
 function admRoundstatChgPwdDlg(){
@@ -348,6 +429,6 @@ $(document).ready(function(){
 	});
 
 	$("#roundstat-drawchange-btn").on("click", function(){
-		admRoundstatOpenPbgIfAllowed();
+		admRoundstatQueueConstraintNow();
 	});
 });

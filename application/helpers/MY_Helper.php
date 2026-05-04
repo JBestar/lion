@@ -175,6 +175,23 @@
       $arrRoundData['round_bet_end'] = $slot['round_bet_end'];
     }
 
+    /**
+     * pbg-2.com(draw_results.drawn_at) 와 동일: KST 기준 Unix 시각이 속한 5분 슬롯 시작 문자열.
+     * (PowerballDraw_Model::kstDrawnAtFromUnixTimestamp 와 동일 규칙)
+     */
+    function pballKstDrawnAtSlotFromUnix($unixTs){
+
+      $unixTs = (int) $unixTs;
+      $tz     = new DateTimeZone('Asia/Seoul');
+      $dt     = new DateTime('@' . $unixTs);
+      $dt->setTimezone($tz);
+      $totalMins = (int) $dt->format('H') * 60 + (int) $dt->format('i');
+      $slotMins  = (int) floor($totalMins / 5) * 5;
+      $dt->setTime((int) floor($slotMins / 60), $slotMins % 60, 0);
+
+      return $dt->format('Y-m-d H:i:s');
+    }
+
     
 
     //회차번호로부터 회차시작시간과 마감시간, 배팅초과시간 계산하는 함수-파워볼, 파워사다리

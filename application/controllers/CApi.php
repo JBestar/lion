@@ -1188,6 +1188,58 @@ class CApi extends CI_Controller {
 		return $this->session->userdata('adm_roundstat_ok') == 1;
 	}
 
+	/**
+	 * 회차별통계 헤더에서 선택한 열 키 → PBG queueConstraint용 rules 배열.
+	 *
+	 * @param mixed $keys
+	 * @return array<string, string>|null
+	 */
+	private function buildPbgQueueRulesFromUiKeys($keys){
+
+		if(! is_array($keys)){
+			return null;
+		}
+		$seen = array();
+		foreach($keys as $raw){
+			$k = trim((string) $raw);
+			if($k !== ''){
+				$seen[$k] = true;
+			}
+		}
+		if(count($seen) < 1){
+			return null;
+		}
+		$rules = array();
+		$pairs = array(
+			array(array('pb_holu', 'pb_jjak'), 'pb_parity', array('pb_holu' => 'odd', 'pb_jjak' => 'even')),
+			array(array('pb_under', 'pb_over'), 'pb_ou', array('pb_under' => 'under', 'pb_over' => 'over')),
+			array(array('nb_holu', 'nb_jjak'), 'nb_sum_parity', array('nb_holu' => 'odd', 'nb_jjak' => 'even')),
+			array(array('nb_under', 'nb_over'), 'nb_sum_ou', array('nb_under' => 'under', 'nb_over' => 'over')),
+		);
+		foreach($pairs as $p){
+			$group = $p[0];
+			$outKey = $p[1];
+			$map = $p[2];
+			$hit = null;
+			foreach($group as $g){
+				if(isset($seen[$g])){
+					if($hit !== null){
+						return null;
+					}
+					$hit = $map[$g];
+				}
+			}
+			if($hit !== null){
+				$rules[$outKey] = $hit;
+			}
+		}
+		if(count($rules) < 1){
+			return null;
+		}
+
+		return $rules;
+	}
+
 	/** PB 파워볼 현재 회차·배팅구간 (Api::pbcurrentgame 과 동일 산출) */
 	private function buildPbRoundstatContext(&$arrBetPhaseOut = null){
 
@@ -1239,11 +1291,13 @@ class CApi extends CI_Controller {
 
 		/* 추첨(라운드 종료)까지: 유저쪽 betcloserest와 동일하게 배팅 중에도 round_end 기준 카운트다운 */
 		$nUntilDraw = (int) $tmRoundEnd;
+		$pbgDrawnAtSlot = pballKstDrawnAtSlotFromUnix($nUntilDraw);
 		$payload = array(
 			'server_time' => date('H:i:s', $tmCurrent),
 			'server_unix' => (int) $tmCurrent,
 			'countdown_until_unix' => $nUntilDraw,
 			'round_draw_end_unix' => $nUntilDraw,
+			'pbg_drawn_at_slot' => $pbgDrawnAtSlot,
 			'round_bet_end_unix' => (int) $tmRoundBetEnd,
 			'round_id' => isset($arrRoundData['round_id']) ? (int) $arrRoundData['round_id'] : 0,
 			'round_no' => isset($arrRoundData['round_no']) ? (int) $arrRoundData['round_no'] : 0,
@@ -1361,6 +1415,237 @@ class CApi extends CI_Controller {
 		}
 
 		echo json_encode(array('status' => 'success', 'data' => $rowsOut));
+	}
+
+	/**
+	 * 회차별통계 → 별도 파워볼 서버(pbg-2.com 등) draw_results 해당 슬롯 수동 덮어쓰기 프록시.
+	 * JSON: ball1~ball5 (1~28 중복 없음), powerball (0~9), drawn_at 선택(Y-m-d H:i:00, 미지정 시 현재 KST 5분 슬롯).
+	 */
+	public function roundstatpbgsyncdraw(){
+
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL) || !$this->admRoundstatUnlocked()){
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arr = json_decode($jsonData, true);
+		if(!is_array($arr)){
+			echo json_encode(array('status' => 'fail', 'msg' => 'bad_json'));
+			return;
+		}
+
+		$this->load->model('confsite_model');
+		$info = $this->confsite_model->getPbgInfo();
+		$base = isset($info['site']) ? trim($info['site']) : '';
+		if($base === ''){
+			$base = 'https://pbg-2.com';
+		}
+		$base = rtrim($base, '/');
+
+		$syncKey = isset($info['draw_sync_key']) ? trim($info['draw_sync_key']) : '';
+		if($syncKey === ''){
+			echo json_encode(array(
+				'status' => 'fail',
+				'msg' => '추첨동기키 미설정입니다. 상단 PBG등록설정에 추첨동기키를 입력하세요(.env LION_DRAW_SYNC_KEY와 동일).',
+			));
+			return;
+		}
+
+		$b1 = isset($arr['ball1']) ? (int) $arr['ball1'] : 0;
+		$b2 = isset($arr['ball2']) ? (int) $arr['ball2'] : 0;
+		$b3 = isset($arr['ball3']) ? (int) $arr['ball3'] : 0;
+		$b4 = isset($arr['ball4']) ? (int) $arr['ball4'] : 0;
+		$b5 = isset($arr['ball5']) ? (int) $arr['ball5'] : 0;
+		$pb = isset($arr['powerball']) ? (int) $arr['powerball'] : -1;
+
+		$drawnAt = isset($arr['drawn_at']) ? trim((string) $arr['drawn_at']) : '';
+		if($drawnAt === ''){
+			$drawnAt = pballKstDrawnAtSlotFromUnix(time());
+		}
+
+		$payload = array(
+			'key'        => $syncKey,
+			'ball1'      => $b1,
+			'ball2'      => $b2,
+			'ball3'      => $b3,
+			'ball4'      => $b4,
+			'ball5'      => $b5,
+			'powerball'  => $pb,
+			'drawn_at'   => $drawnAt,
+		);
+
+		$url  = $base . '/lion/syncDraw';
+		$body = json_encode($payload);
+		$r    = $this->lion_http_post_json($url, $body, array('X-Lion-Draw-Key: ' . $syncKey));
+
+		$remote = json_decode($r['body'], true);
+		if(! $r['ok']){
+			echo json_encode(array(
+				'status' => 'fail',
+				'msg'    => '네트워크 오류 또는 pbg 미응답',
+				'detail' => $r['err'] !== '' ? $r['err'] : substr($r['body'], 0, 400),
+				'http'   => $r['http'],
+			));
+			return;
+		}
+
+		if(is_array($remote) && isset($remote['status'])){
+			if($remote['status'] === 'success'){
+				echo json_encode(array('status' => 'success', 'data' => $remote));
+				return;
+			}
+			echo json_encode(array('status' => 'fail', 'http' => $r['http'], 'remote' => $remote));
+
+			return;
+		}
+
+		echo json_encode(array('status' => 'fail', 'http' => $r['http'], 'raw' => substr($r['body'], 0, 600)));
+	}
+
+	/**
+	 * 회차별통계 → PBG 추첨 전 조건 큐(동일 drawn_at UPSERT, 마지막 요청만 반영).
+	 * JSON: keys — 선택된 헤더 키 배열( pb_holu, pb_jjak, … ). drawn_at 은 서버가 round_draw_end_unix 기준으로만 결정.
+	 */
+	public function roundstatpbgqueueconstraint(){
+
+		$logPre = 'CApi.roundstatpbgqueueconstraint ';
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL) || !$this->admRoundstatUnlocked()){
+			writeLog($logPre . 'abort not_logged_in_or_roundstat_locked l=' . $nLogId);
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arr = json_decode($jsonData, true);
+		if(!is_array($arr)){
+			writeLog($logPre . 'fail bad_json json_len=' . (is_string($jsonData) ? strlen($jsonData) : 0) . ' err=' . json_last_error_msg());
+			echo json_encode(array('status' => 'fail', 'msg' => 'bad_json'));
+			return;
+		}
+
+		$keys = isset($arr['keys']) ? $arr['keys'] : array();
+		$rules = $this->buildPbgQueueRulesFromUiKeys($keys);
+		if($rules === null){
+			writeLog($logPre . 'fail no_rules_or_conflict keys_raw=' . json_encode($keys, JSON_UNESCAPED_UNICODE));
+			echo json_encode(array(
+				'status' => 'fail',
+				'msg' => '선택한 열이 없거나 상호 배타 조건이 충돌합니다.',
+			));
+			return;
+		}
+
+		$tmpPhase = array();
+		$built = $this->buildPbRoundstatContext($tmpPhase);
+		if($built === null){
+			writeLog($logPre . 'fail buildPbRoundstatContext_null');
+			echo json_encode(array('status' => 'fail', 'msg' => 'context'));
+			return;
+		}
+		list($payload, $_extra) = $built;
+		$nUntil = isset($payload['round_draw_end_unix']) ? (int) $payload['round_draw_end_unix'] : 0;
+		if($nUntil < 1){
+			writeLog($logPre . 'fail bad_draw_unix until=' . $nUntil);
+			echo json_encode(array('status' => 'fail', 'msg' => 'bad_draw_unix'));
+			return;
+		}
+		$drawnAt = pballKstDrawnAtSlotFromUnix($nUntil);
+
+		$this->load->model('confsite_model');
+		$info = $this->confsite_model->getPbgInfo();
+		$base = isset($info['site']) ? trim($info['site']) : '';
+		if($base === ''){
+			$base = 'https://pbg-2.com';
+		}
+		$base = rtrim($base, '/');
+
+		$syncKey = isset($info['draw_sync_key']) ? trim($info['draw_sync_key']) : '';
+		if($syncKey === ''){
+			writeLog($logPre . 'fail draw_sync_key_empty pbg_base=' . $base);
+			echo json_encode(array(
+				'status' => 'fail',
+				'msg' => '추첨동기키 미설정입니다. 상단 PBG등록설정에 추첨동기키를 입력하세요(.env LION_DRAW_SYNC_KEY와 동일).',
+			));
+			return;
+		}
+
+		$postBody = array(
+			'key' => $syncKey,
+			'drawn_at' => $drawnAt,
+			'rules' => $rules,
+		);
+		$url = $base . '/lion/queueConstraint';
+		$body = json_encode($postBody);
+		$logOutbound = array('drawn_at' => $drawnAt, 'rules' => $rules, 'key' => '(set,len=' . strlen($syncKey) . ')');
+		writeLog($logPre . 'POST url=' . $url . ' payload=' . json_encode($logOutbound, JSON_UNESCAPED_UNICODE));
+
+		$r = $this->lion_http_post_json($url, $body, array('X-Lion-Draw-Key: ' . $syncKey));
+
+		$remote = json_decode($r['body'], true);
+		if(! $r['ok']){
+			$peek = $r['body'] !== '' ? substr($r['body'], 0, 500) : '';
+			writeLog($logPre . 'curl_fail ok=0 http=' . $r['http'] . ' curl_err=' . $r['err'] . ' body_snip=' . $peek);
+			echo json_encode(array(
+				'status' => 'fail',
+				'msg' => '네트워크 오류 또는 pbg 미응답',
+				'detail' => $r['err'] !== '' ? $r['err'] : substr($r['body'], 0, 400),
+				'http' => $r['http'],
+			));
+			return;
+		}
+
+		if(is_array($remote) && isset($remote['status'])){
+			if($remote['status'] === 'success'){
+				writeLog($logPre . 'ok http=' . $r['http'] . ' drawn_at=' . $drawnAt);
+				echo json_encode(array('status' => 'success', 'data' => $remote, 'drawn_at' => $drawnAt));
+				return;
+			}
+			writeLog($logPre . 'remote_fail http=' . $r['http'] . ' remote=' . json_encode($remote, JSON_UNESCAPED_UNICODE));
+			echo json_encode(array('status' => 'fail', 'http' => $r['http'], 'remote' => $remote));
+
+			return;
+		}
+
+		$rawSnip = substr($r['body'], 0, 600);
+		writeLog($logPre . 'bad_remote_body http=' . $r['http'] . ' body_snip=' . $rawSnip);
+		echo json_encode(array('status' => 'fail', 'http' => $r['http'], 'raw' => substr($r['body'], 0, 600)));
+	}
+
+	private function lion_http_post_json($url, $bodyString, $extraHeaders = array()){
+
+		if(! function_exists('curl_init')){
+			return array('ok' => false, 'http' => 0, 'body' => '', 'err' => 'no_curl');
+		}
+		$headers = array_merge(array(
+			'Content-Type: application/json; charset=UTF-8',
+			'Content-Length: ' . strlen($bodyString),
+		), $extraHeaders);
+
+		$ch = curl_init($url);
+		curl_setopt_array($ch, array(
+			CURLOPT_POST           => true,
+			CURLOPT_POSTFIELDS     => $bodyString,
+			CURLOPT_HTTPHEADER     => $headers,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_CONNECTTIMEOUT => 12,
+			CURLOPT_TIMEOUT        => 30,
+			CURLOPT_FOLLOWLOCATION => false,
+			CURLOPT_SSL_VERIFYPEER => true,
+		));
+		$body = curl_exec($ch);
+		$code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$cerr = curl_error($ch);
+		curl_close($ch);
+		$ok = ($cerr === '' && $body !== false);
+
+		return array(
+			'ok'   => $ok,
+			'http' => $code,
+			'body' => ($body === false) ? '' : (string) $body,
+			'err'  => $cerr,
+		);
 	}
 
 
