@@ -66,16 +66,47 @@ function rsStartCountdownInterpolated(){
 	window._rsCdIv = setInterval(rsTickCountdownDisplay, 200);
 }
 
+/** 카운트다운 보간과 동일한 “서버 시각” (추첨변경 버튼 활성 시점을 배팅종료 문구와 맞추기 위함) */
+function rsApproxServerUnix(){
+
+	if(m_rsSrvUnix == null || m_rsPollPerfMs == null){
+		return null;
+	}
+	var perfMs = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
+	return m_rsSrvUnix + (perfMs - m_rsPollPerfMs) / 1000;
+}
+
+/** rsTickCountdownDisplay와 동일: 배팅 마감 시각 경과 여부 */
+function rsIsPastBetEndByClock(){
+
+	if(m_rsBetEndUnix == null){
+		return false;
+	}
+	var a = rsApproxServerUnix();
+	if(a == null){
+		return false;
+	}
+	return a >= m_rsBetEndUnix;
+}
+
+/** 배팅종료로 볼 수 있는가 — 서버 플래그 또는 보간 시각(폴링 지연 없이 카운트다운과 일치) */
+function rsIsBettingClosedEffective(){
+
+	return !m_rsBettingOpen || rsIsPastBetEndByClock();
+}
+
 function rsTickCountdownDisplay(){
 
 	if(m_rsSrvUnix == null || m_rsPollPerfMs == null){
 		return;
 	}
-	var perfMs = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
-	var elapsedSec = (perfMs - m_rsPollPerfMs) / 1000;
-	var approxSrv = m_rsSrvUnix + elapsedSec;
+	var approxSrv = rsApproxServerUnix();
+	if(approxSrv == null){
+		return;
+	}
 	if(m_rsBetEndUnix != null && approxSrv >= m_rsBetEndUnix){
 		$("#roundstat-countdown").text("배팅종료");
+		rsUpdateDrawChangeBtn();
 		return;
 	}
 	if(m_rsDrawEndUnix == null){
@@ -83,6 +114,7 @@ function rsTickCountdownDisplay(){
 	}
 	var rem = Math.max(0, Math.floor(m_rsDrawEndUnix - approxSrv));
 	$("#roundstat-countdown").text(rsFmtCountdown(rem));
+	rsUpdateDrawChangeBtn();
 }
 
 function rsApplyContextCountdownSync(data){
@@ -117,11 +149,14 @@ function rsAnySelected(){
 
 function rsUpdateDrawChangeBtn(){
 
-	var ok = !m_rsBettingOpen && rsAnySelected();
+	var ok = rsIsBettingClosedEffective() && rsAnySelected();
 	var $b = $("#roundstat-drawchange-btn");
 	$b.prop("disabled", !ok);
 	$b.toggleClass("roundstat-drawchange-btn--ready", ok);
 	$b.toggleClass("roundstat-drawchange-btn--locked", !ok);
+	if(!ok){
+		$("#roundstat-queued-cond").empty();
+	}
 	$b.attr("title", ok
 		? "배팅마감이며 열을 선택한 뒤 한 번 클릭하면 파워볼 서버로 추첨변경 요청이 곧바로 전달됩니다."
 		: "배팅마감 이면서 파워볼·일반볼 열 중 하나 이상 선택 시 사용할 수 있습니다.");
@@ -407,6 +442,11 @@ function admRoundstatQueueConstraintNow(){
 			if(j.status === "success"){
 				var at = (j.drawn_at != null) ? String(j.drawn_at).trim() : (j.data && j.data.drawn_at ? String(j.data.drawn_at).trim() : "");
 				var cond = rsSelectedLabelsForKeys(keys);
+				var queuedLine = "추첨조건 " + cond;
+				if(at){
+					queuedLine += " · 적용슬롯 " + at;
+				}
+				$("#roundstat-queued-cond").text(queuedLine);
 				var msg = "";
 				if(at){
 					msg = "PBG 추첨 적용 시각(KST): " + at + "\n";

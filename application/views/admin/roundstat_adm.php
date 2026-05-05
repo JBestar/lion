@@ -20,7 +20,10 @@
                 <span id="roundstat-live-clock" class="roundstat-live-clock">—:—:—</span>
                 <span id="roundstat-round-line" class="roundstat-round-line">진행회차 —</span>
                 <span id="roundstat-countdown" class="roundstat-countdown">[—:—]</span>
-                <button type="button" id="roundstat-drawchange-btn" class="el-button el-button--mini roundstat-drawchange-btn roundstat-drawchange-btn--locked" disabled><span>추첨변경</span></button>
+                <span class="roundstat-drawchange-wrap">
+                    <button type="button" id="roundstat-drawchange-btn" class="el-button el-button--mini roundstat-drawchange-btn roundstat-drawchange-btn--locked" disabled><span>추첨변경</span></button>
+                    <span id="roundstat-queued-cond" class="roundstat-queued-cond" aria-live="polite"></span>
+                </span>
             </div>
             <button type="button" class="el-button el-button--mini el-button--default roundstat-chgpwd-at-end" onclick="admRoundstatChgPwdDlg();"><span>암호변경</span></button>
         </div>

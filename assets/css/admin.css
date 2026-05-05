@@ -52286,6 +52286,24 @@ html.overflow-y-hidden {
 }
 
 /* 추첨변경: 활성/비활성 구분을 명확히 */
+.roundstat-drawchange-wrap {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px 10px;
+	vertical-align: middle;
+	max-width: 100%;
+}
+.roundstat-queued-cond {
+	font-size: 12px;
+	color: #67c23a;
+	font-weight: 600;
+	line-height: 1.35;
+	max-width: min(480px, 52vw);
+}
+.roundstat-queued-cond:empty {
+	display: none;
+}
 .roundstat-drawchange-btn {
     transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, opacity .2s ease, filter .2s ease;
     font-weight: 600;
