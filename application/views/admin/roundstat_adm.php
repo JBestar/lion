@@ -8,6 +8,7 @@
             <input type="password" id="roundstat-pwd-input" class="roundstat-lock-input el-input__inner" autocomplete="off" />
             <div class="roundstat-lock-actions">
                 <button type="button" class="el-button el-button--primary" id="roundstat-pwd-submit"><span>확인</span></button>
+                <button type="button" class="el-button el-button--default" id="roundstat-pwd-cancel"><span>취소</span></button>
             </div>
             <div id="roundstat-pwd-err" class="roundstat-pwd-err"></div>
         </div>

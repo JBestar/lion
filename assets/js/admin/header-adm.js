@@ -28,6 +28,8 @@
             location.href = "/admin/exchange"+location.search;
         } else if(iMenu == 9){
             location.href = "/admin/trace"+location.search;
+        } else if(iMenu == 12){
+            location.href = "/admin/blockmanage"+location.search;
         } else if(iMenu == 11){
             location.href = "/admin/order"+location.search;
         } else if(iMenu == 10){

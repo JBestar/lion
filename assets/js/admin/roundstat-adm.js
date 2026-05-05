@@ -454,8 +454,14 @@ function requestRoundstatRows(){
 
 function unlockRoundstat(pwd){
 
-	var jsonData = JSON.stringify({ pwd: pwd });
+	var pw = (pwd != null) ? String(pwd) : "";
+	var jsonData = JSON.stringify({ pwd: pw });
 	$("#roundstat-pwd-err").text("");
+	if(pw.length < 1){
+		$("#roundstat-pwd-err").text("암호를 입력하세요.");
+		$("#roundstat-pwd-input").focus();
+		return;
+	}
 	$.ajax({
 		type: "POST",
 		dataType: "json",
@@ -476,7 +482,17 @@ function unlockRoundstat(pwd){
 				if(m_rsTimerRows) clearInterval(m_rsTimerRows);
 				m_rsTimerRows = setInterval(requestRoundstatRows, 2500);
 			} else if(j.status === "fail"){
-				$("#roundstat-pwd-err").text("암호가 올바르지 않습니다.");
+				var remain = (j.remain_attempts != null) ? parseInt(j.remain_attempts, 10) : NaN;
+				if(j.data === 4){
+					$("#roundstat-pwd-err").text("암호 5회 오류로 계정과 접속 IP가 차단되었습니다. 관리자에게 문의하세요.");
+				} else if(j.data === 3){
+					$("#roundstat-pwd-err").text("암호 입력 가능 횟수를 모두 사용했습니다. 관리자에게 문의하세요.");
+				} else if(!isNaN(remain)){
+					$("#roundstat-pwd-err").text("암호가 올바르지 않습니다. 남은 횟수: " + remain + "/5");
+				} else {
+					$("#roundstat-pwd-err").text("암호가 올바르지 않습니다.");
+				}
+				$("#roundstat-pwd-input").val("").focus();
 			}
 		}
 	});
@@ -556,6 +572,10 @@ function admRoundstatQueueConstraintNow(){
 			} else if(j.raw){
 				m += " — " + String(j.raw).slice(0, 120);
 			}
+			var lower = String(m).toLowerCase();
+			if(lower.indexOf("already exists") >= 0 || lower.indexOf("already_exists") >= 0 || lower.indexOf("drawn") >= 0 || lower.indexOf("closed") >= 0){
+				m = "추첨이 이미 진행되어 변경할 수 없습니다. 다음 회차에서 다시 시도해 주세요.";
+			}
 			if(typeof showMessageBox === "function"){
 				showMessageBox(1, m);
 			}
@@ -608,9 +628,21 @@ $(document).ready(function(){
 
 	$("#roundstat-main-panel").hide();
 	$("#roundstat-lock-overlay").show();
+	setTimeout(function(){
+		$("#roundstat-pwd-input").focus();
+	}, 0);
 
 	$("#roundstat-pwd-submit").on("click", function(){
 		unlockRoundstat($("#roundstat-pwd-input").val());
+	});
+	$("#roundstat-pwd-cancel").on("click", function(){
+		if(window.history.length > 1){
+			window.history.back();
+			return;
+		}
+		if(typeof clickMenu === "function"){
+			clickMenu(2);
+		}
 	});
 
 	$("#roundstat-pwd-input").on("keydown", function(e){

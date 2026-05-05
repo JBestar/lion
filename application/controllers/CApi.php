@@ -28,6 +28,22 @@ class CApi extends CI_Controller {
 		$strPwd = $arrLoginData['password'];
 		writeLog($logHead . "try uid=" . $strUid . " pwd_len=" . strlen((string) $strPwd));
 
+		/* 회차별통계 잠금 블록(아이디/IP) 연동: 블록 대상은 로그인 자체 차단 */
+		$strIp = (string) $this->input->ip_address();
+		$this->ensureRoundstatUnlockBlockTable();
+		$isBlockedUid = $strUid !== '' && $this->isRoundstatUnlockBlocked('uid', $strUid);
+		$isBlockedIp = $strIp !== '' && $this->isRoundstatUnlockBlocked('ip', $strIp);
+		if($isBlockedUid || $isBlockedIp){
+			writeLog($logHead . "blocked_login uid=" . $strUid . " ip=" . $strIp . " by_uid=" . ($isBlockedUid ? '1' : '0') . " by_ip=" . ($isBlockedIp ? '1' : '0'));
+			$blockedType = $isBlockedIp ? 'ip' : 'uid';
+			$arrResult['code'] = 5;
+			$arrResult['status'] = "fail";
+			$arrResult['blocked_type'] = $blockedType;
+			$arrResult['msg'] = $blockedType === 'ip' ? "차단된 아이피입니다." : "차단된 계정입니다.";
+			echo json_encode($arrResult);
+			return;
+		}
+
 		$this->load->model('member_model');
 		$this->load->model('loghist_model');
 
@@ -1311,6 +1327,7 @@ class CApi extends CI_Controller {
 
 	public function roundstatunlock(){
 
+		$logPre = 'CApi.roundstatunlock ';
 		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
 		$arr = json_decode($jsonData, true);
 		$nLogId = trim($this->input->get('l'));
@@ -1318,20 +1335,209 @@ class CApi extends CI_Controller {
 			echo json_encode(array('status' => 'logout'));
 			return;
 		}
+		$uid = (string) $this->sess_model->getUserId($nLogId);
+		if($uid === ''){
+			$uid = (string) $this->session->userdata('username');
+		}
+		$ip = (string) $this->input->ip_address();
 
 		if(!is_array($arr) || !isset($arr['pwd'])){
 			echo json_encode(array('status' => 'fail', 'data' => 1));
 			return;
 		}
 
+		$maxTry = 5;
+		$this->ensureRoundstatUnlockBlockTable();
+		$uidBlocked = $uid !== '' && $this->isRoundstatUnlockBlocked('uid', $uid);
+		$ipBlocked = $ip !== '' && $this->isRoundstatUnlockBlocked('ip', $ip);
+		if($uidBlocked || $ipBlocked){
+			writeLog($logPre . 'blocked uid=' . $uid . ' ip=' . $ip . ' uid_blocked=' . ($uidBlocked ? '1' : '0') . ' ip_blocked=' . ($ipBlocked ? '1' : '0'));
+			echo json_encode(array(
+				'status' => 'fail',
+				'data' => 4,
+				'remain_attempts' => 0
+			));
+			return;
+		}
+
+		$failCount = $this->getRoundstatUnlockFailCount($uid, $ip);
+
 		$this->load->model('confsite_model');
 		$dbPwd = $this->confsite_model->getRoundStatPassword();
 		if(strcmp((string) $arr['pwd'], $dbPwd) === 0){
 			$this->session->set_userdata('adm_roundstat_ok', 1);
+			/* 정답 입력 시 누적 실패/블록 모두 초기화 */
+			if($uid !== ''){
+				$this->clearRoundstatUnlockBlock('uid', $uid);
+			}
+			if($ip !== ''){
+				$this->clearRoundstatUnlockBlock('ip', $ip);
+			}
 			echo json_encode(array('status' => 'success'));
 		} else {
-			echo json_encode(array('status' => 'fail', 'data' => 2));
+			$nextFailCount = $failCount + 1;
+			$willBlock = ($nextFailCount >= $maxTry);
+			if($uid !== ''){
+				$this->touchRoundstatUnlockBlock('uid', $uid, $willBlock);
+			}
+			if($ip !== ''){
+				$this->touchRoundstatUnlockBlock('ip', $ip, $willBlock);
+			}
+			$failCount = $this->getRoundstatUnlockFailCount($uid, $ip);
+			$remain = max(0, $maxTry - $failCount);
+			if($willBlock || $failCount >= $maxTry){
+				writeLog($logPre . 'block uid=' . $uid . ' ip=' . $ip . ' after_fail=' . $failCount);
+				/* 즉시 로그아웃: 세션 목록 제거 + 세션 값 초기화 */
+				$this->sess_model->logout($nLogId);
+				$this->session->unset_userdata('adm_roundstat_ok');
+				$this->session->unset_userdata('logged_in');
+				$this->session->unset_userdata('user_level');
+				$this->session->unset_userdata('username');
+				echo json_encode(array('status' => 'logout', 'data' => 4, 'remain_attempts' => 0));
+				return;
+			}
+			echo json_encode(array(
+				'status' => 'fail',
+				'data' => 2,
+				'remain_attempts' => $remain
+			));
 		}
+	}
+
+	private function ensureRoundstatUnlockBlockTable(){
+		$sql = "CREATE TABLE IF NOT EXISTS `roundstat_unlock_block` (
+			`id` INT(11) NOT NULL AUTO_INCREMENT,
+			`block_type` VARCHAR(16) NOT NULL,
+			`block_key` VARCHAR(255) NOT NULL,
+			`fail_count` INT(11) NOT NULL DEFAULT 0,
+			`is_blocked` TINYINT(1) NOT NULL DEFAULT 0,
+			`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			`updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			`blocked_at` DATETIME NULL DEFAULT NULL,
+			PRIMARY KEY (`id`),
+			UNIQUE KEY `uniq_roundstat_unlock_block` (`block_type`,`block_key`)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+		$this->db->query($sql);
+	}
+
+	private function isRoundstatUnlockBlocked($type, $key){
+		$q = $this->db
+			->select('is_blocked')
+			->from('roundstat_unlock_block')
+			->where('block_type', $type)
+			->where('block_key', $key)
+			->limit(1)
+			->get();
+		if(!$q || $q->num_rows() < 1){
+			return false;
+		}
+		$row = $q->row();
+		return isset($row->is_blocked) && (int) $row->is_blocked === 1;
+	}
+
+	private function touchRoundstatUnlockBlock($type, $key, $blocked){
+		$blockedInt = $blocked ? 1 : 0;
+		$blockedAt = $blocked ? "NOW()" : "NULL";
+		$sql = "INSERT INTO `roundstat_unlock_block`
+			(`block_type`,`block_key`,`fail_count`,`is_blocked`,`blocked_at`,`created_at`,`updated_at`)
+			VALUES (?,?,?,?,{$blockedAt},NOW(),NOW())
+			ON DUPLICATE KEY UPDATE
+				`fail_count` = `fail_count` + 1,
+				`is_blocked` = GREATEST(`is_blocked`, VALUES(`is_blocked`)),
+				`blocked_at` = CASE
+					WHEN VALUES(`is_blocked`) = 1 THEN NOW()
+					ELSE `blocked_at`
+				END,
+				`updated_at` = NOW()";
+		$this->db->query($sql, array($type, $key, 1, $blockedInt));
+	}
+
+	private function clearRoundstatUnlockBlock($type, $key){
+		$this->db->where('block_type', $type)->where('block_key', $key)->delete('roundstat_unlock_block');
+	}
+
+	private function getRoundstatUnlockFailCount($uid, $ip){
+		$max = 0;
+		if($uid !== ''){
+			$qUid = $this->db
+				->select('fail_count')
+				->from('roundstat_unlock_block')
+				->where('block_type', 'uid')
+				->where('block_key', $uid)
+				->limit(1)
+				->get();
+			if($qUid && $qUid->num_rows() > 0){
+				$max = max($max, (int) $qUid->row()->fail_count);
+			}
+		}
+		if($ip !== ''){
+			$qIp = $this->db
+				->select('fail_count')
+				->from('roundstat_unlock_block')
+				->where('block_type', 'ip')
+				->where('block_key', $ip)
+				->limit(1)
+				->get();
+			if($qIp && $qIp->num_rows() > 0){
+				$max = max($max, (int) $qIp->row()->fail_count);
+			}
+		}
+		return $max;
+	}
+
+	private function isTopAdminByLogId($nLogId){
+		$this->load->model('member_model');
+		$strUid = $this->sess_model->getUserId($nLogId);
+		$objAdmin = $this->member_model->getInfoByUid($strUid);
+		return (!is_null($objAdmin) && (int) $objAdmin->mb_level === 11);
+	}
+
+	public function roundstatblocklist(){
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL)){
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+		if(!$this->isTopAdminByLogId($nLogId)){
+			echo json_encode(array('status' => 'fail', 'data' => 2, 'msg' => '권한이 없습니다.'));
+			return;
+		}
+
+		$this->ensureRoundstatUnlockBlockTable();
+		$rows = $this->db
+			->select('block_type, block_key, fail_count, blocked_at, updated_at')
+			->from('roundstat_unlock_block')
+			->where('is_blocked', 1)
+			->order_by('blocked_at', 'DESC')
+			->order_by('updated_at', 'DESC')
+			->get()
+			->result_array();
+		echo json_encode(array('status' => 'success', 'data' => $rows));
+	}
+
+	public function roundstatblockclear(){
+		$nLogId = trim($this->input->get('l'));
+		if(!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL)){
+			echo json_encode(array('status' => 'logout'));
+			return;
+		}
+		if(!$this->isTopAdminByLogId($nLogId)){
+			echo json_encode(array('status' => 'fail', 'data' => 2, 'msg' => '권한이 없습니다.'));
+			return;
+		}
+
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arr = json_decode($jsonData, true);
+		$type = isset($arr['block_type']) ? trim((string) $arr['block_type']) : '';
+		$key = isset($arr['block_key']) ? trim((string) $arr['block_key']) : '';
+		if(($type !== 'uid' && $type !== 'ip') || $key === ''){
+			echo json_encode(array('status' => 'fail', 'data' => 1, 'msg' => 'invalid_params'));
+			return;
+		}
+
+		$this->ensureRoundstatUnlockBlockTable();
+		$this->clearRoundstatUnlockBlock($type, $key);
+		echo json_encode(array('status' => 'success'));
 	}
 
 	public function roundstatchgpwd(){

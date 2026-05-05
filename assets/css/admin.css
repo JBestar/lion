@@ -52104,6 +52104,20 @@ html.overflow-y-hidden {
     padding-left: 20px; 
     color: rgb(255, 255, 255); 
 }
+.el-col-4 > ul.el-menu {
+    overflow: hidden;
+}
+.el-col-4 > ul.el-menu > .text-center.pa-2 {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+}
+.el-col-4 > ul.el-menu > .el-menu-item {
+    height: 42px;
+    line-height: 42px;
+    font-size: 0.95vw;
+    padding-top: 0;
+    padding-bottom: 0;
+}
 
 .el-menu .el-menu-item.is-active{
     color: rgb(255, 208, 75);
@@ -52224,7 +52238,7 @@ html.overflow-y-hidden {
 .roundstat-lock-title { font-size: 18px; color: #fff; font-weight: 600; margin-bottom: 12px; text-align: center; }
 .roundstat-lock-desc { font-size: 14px; color: #ccc; margin-bottom: 10px; text-align: center; }
 .roundstat-lock-input { width: 100%; box-sizing: border-box; margin-bottom: 14px; }
-.roundstat-lock-actions { text-align: center; }
+.roundstat-lock-actions { text-align: center; display: flex; justify-content: center; gap: 8px; }
 .roundstat-pwd-err { color: #f56c6c; font-size: 13px; margin-top: 10px; min-height: 18px; text-align: center; }
 
 .roundstat-toolbar {

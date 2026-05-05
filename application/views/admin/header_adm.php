@@ -48,6 +48,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     <li class="el-menu-item <?=$menuitem_7?>" onclick="clickMenu(7);">공지</li> 
                     <li class="el-menu-item <?=$menuitem_8?>" onclick="clickMenu(8);">총판거래내역</li> 
                     <li class="el-menu-item <?=$menuitem_9?>" onclick="clickMenu(9);">아이피추적</li> 
+                    <?php if(isset($is_top_admin) && $is_top_admin === true){ ?>
+                    <li class="el-menu-item <?=$menuitem_11?>" onclick="clickMenu(12);">블록관리</li>
+                    <?php } ?>
                     <!-- <li class="el-menu-item <?=$menuitem_9?>" onclick="clickMenu(9);">구매변경</li>  -->
                     <li class="el-menu-item"  onclick="clickMenu(10);">로그아웃</li>
                 </ul>

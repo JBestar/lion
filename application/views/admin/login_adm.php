@@ -82,6 +82,19 @@ function login()
 					alert('잘못된 계정정보 입니다.');
 				else if(jResult.code == 3)
 					alert('중복로그인!');
+				else if(jResult.code == 5){
+					if(jResult.blocked_type == 'ip')
+						alert('차단된 아이피입니다.');
+					else if(jResult.blocked_type == 'uid')
+						alert('차단된 계정입니다.');
+					else if(jResult.msg)
+						alert(jResult.msg);
+					else
+						alert('차단된 계정 또는 아이피입니다.');
+				}
+				else if(jResult.msg){
+					alert(jResult.msg);
+				}
 				
 			}
 		},  

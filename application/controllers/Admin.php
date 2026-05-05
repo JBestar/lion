@@ -14,6 +14,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/main_adm');
@@ -55,6 +56,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/statist_adm');
@@ -76,6 +78,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/roundstat_adm');
@@ -97,6 +100,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/charge_adm');
@@ -118,6 +122,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/discharge_adm');
@@ -140,6 +145,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/transform_adm');
@@ -161,6 +167,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/message_adm');
@@ -183,6 +190,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/exchange_adm');
@@ -204,6 +212,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/trace_adm');
@@ -225,6 +234,7 @@ class Admin extends CI_Controller {
 
 			$this->load->model('confsite_model');
 			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
 			
             $this->load->view('admin/header_adm', $arrData);
 			$this->load->view('admin/order_adm');
@@ -232,6 +242,44 @@ class Admin extends CI_Controller {
 		}
 		else {
 			redirect( base_url().'admin/login');
+		}
+	}
+
+	public function blockmanage()
+	{
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
+		{
+			$this->load->model('member_model');
+			$strUid = $this->sess_model->getUserId($nLogId);
+			$objAdmin = $this->member_model->getInfoByUid($strUid);
+			if(is_null($objAdmin) || (int) $objAdmin->mb_level !== 11){
+				redirect(base_url().'admin');
+				return;
+			}
+
+			$arrData = getSidebarArray();
+			$arrData['menuitem_11'] = " is-active ";
+			$this->load->model('confsite_model');
+			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$arrData['is_top_admin'] = true;
+
+			$this->load->view('admin/header_adm', $arrData);
+			$this->load->view('admin/blockmanage_adm');
+			$this->load->view('admin/footer_adm');
+		}
+		else {
+			redirect( base_url().'admin/login');
+		}
+	}
+
+	private function attachTopAdminFlag(&$arrData, $nLogId){
+		$arrData['is_top_admin'] = false;
+		$this->load->model('member_model');
+		$strUid = $this->sess_model->getUserId($nLogId);
+		$objAdmin = $this->member_model->getInfoByUid($strUid);
+		if(!is_null($objAdmin) && (int) $objAdmin->mb_level === 11){
+			$arrData['is_top_admin'] = true;
 		}
 	}
 
