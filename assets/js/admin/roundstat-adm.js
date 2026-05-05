@@ -11,6 +11,9 @@ var m_rsPollPerfMs = null;
 var m_rsContextFailBanner = false;
 /** roundstatcontext: 다음 추첨 시각에 대응하는 PBG drawn_at 슬롯 (안내·불일치 경고용) */
 var m_rsPbgDrawnAtSlot = null;
+/** 이력 행 변화 없을 때 진행 행만 갱신해 2.5초 폴링 깜박임 제거 */
+var m_rsLastHistKey = null;
+var m_rsLastLiveSig = null;
 var RS_EXCLUSIVE = {
 	pb_holu: ["pb_jjak"], pb_jjak: ["pb_holu"],
 	pb_under: ["pb_over"], pb_over: ["pb_under"],
@@ -50,13 +53,17 @@ function rsFmtWon(n){
 	return x.toLocaleString() + "원";
 }
 
+/** 브라우저/PC 타임존과 무관하게 KST(서울) 시:분:초 */
+function rsFormatSeoulHms(){
+
+	return new Date().toLocaleTimeString("sv-SE", { timeZone: "Asia/Seoul" });
+}
+
 function rsStartLiveClock(){
 
 	if(window._rsClkIv) clearInterval(window._rsClkIv);
 	window._rsClkIv = setInterval(function(){
-		var dt = new Date();
-		var t = ("0" + dt.getHours()).slice(-2) + ":" + ("0" + dt.getMinutes()).slice(-2) + ":" + ("0" + dt.getSeconds()).slice(-2);
-		$("#roundstat-live-clock").text(t);
+		$("#roundstat-live-clock").text(rsFormatSeoulHms());
 	}, 500);
 }
 
@@ -233,6 +240,39 @@ function rsCellSum(r, key){
 	}
 }
 
+function rsHistoryRowSig(r){
+
+	if(!r){
+		return "";
+	}
+	var parts = [
+		r.bet_round_fid, r.bet_round_no,
+		r.sum_pb_holu, r.sum_pb_jjak, r.sum_pb_under, r.sum_pb_over,
+		r.sum_nb_holu, r.sum_nb_jjak, r.sum_nb_under, r.sum_nb_over
+	];
+	var out = "";
+	for(var i = 0; i < parts.length; i++){
+		out += (i ? "|" : "") + (parts[i] != null && parts[i] !== "" ? String(parts[i]) : "");
+	}
+	return out;
+}
+
+function rsLiveRowSig(r){
+
+	if(!r){
+		return "";
+	}
+	var fid = r.bet_round_fid != null ? String(r.bet_round_fid) : "";
+	var rn = r.bet_round_no != null ? String(r.bet_round_no) : "";
+	var label = fid && rn ? (fid + "(" + rn + ")회") : (fid || rn || "—");
+	var k = ["pb_holu", "pb_jjak", "pb_under", "pb_over", "nb_holu", "nb_jjak", "nb_under", "nb_over"];
+	var parts = [label, fid, rn];
+	for(var c = 0; c < k.length; c++){
+		parts.push(String(rsCellSum(r, k[c])));
+	}
+	return parts.join("|");
+}
+
 /** 맨 위 행(진행 회차): 대응 열 쌍에서 합계가 더 작은 쪽만 하이라이트 (동률이면 둘 다 해제) */
 function rsApplyLiveRowMinHighlight(){
 
@@ -260,40 +300,85 @@ function rsApplyLiveRowMinHighlight(){
 	}
 }
 
-function rsRenderRows(arr){
-	var html = "";
-	if(arr && arr.length > 0){
-		for(var i = 0; i < arr.length; i++){
-			var r = arr[i];
-			var fid = r.bet_round_fid != null ? String(r.bet_round_fid) : "";
-			var rn = r.bet_round_no != null ? String(r.bet_round_no) : "";
-			var label = fid && rn ? (fid + "(" + rn + ")회") : (fid || rn || "—");
-			var isLive = i === 0;
-			html += "<tr>";
-			html += "<td><div class=\"cell\">PBG</div></td>";
-			html += "<td><div class=\"cell roundstat-cell-round\">" + label + "</div></td>";
+function rsPatchLiveRowOnly(r){
 
-			if(isLive){
-				var k = ["pb_holu", "pb_jjak", "pb_under", "pb_over", "nb_holu", "nb_jjak", "nb_under", "nb_over"];
-				for(var c = 0; c < k.length; c++){
-					var kk = k[c];
-					var sum = rsCellSum(r, kk);
-					html += "<td data-rscell=\"" + kk + "\" data-rs-sum=\"" + sum + "\"><div class=\"cell\">" + rsFmtWon(r["sum_" + kk]) + "</div></td>";
-				}
-			} else {
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_holu) + "</div></td>";
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_jjak) + "</div></td>";
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_under) + "</div></td>";
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_over) + "</div></td>";
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_holu) + "</div></td>";
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_jjak) + "</div></td>";
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_under) + "</div></td>";
-				html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_over) + "</div></td>";
-			}
-			html += "</tr>";
-		}
+	var fid = r.bet_round_fid != null ? String(r.bet_round_fid) : "";
+	var rn = r.bet_round_no != null ? String(r.bet_round_no) : "";
+	var label = fid && rn ? (fid + "(" + rn + ")회") : (fid || rn || "—");
+	var $tr = $("#roundstat-tbody-id tr:first");
+	if(!$tr.length){
+		return;
 	}
-	$("#roundstat-tbody-id").html(html);
+	$tr.children("td").eq(1).find(".cell").text(label);
+	var k = ["pb_holu", "pb_jjak", "pb_under", "pb_over", "nb_holu", "nb_jjak", "nb_under", "nb_over"];
+	for(var c = 0; c < k.length; c++){
+		var kk = k[c];
+		var sum = rsCellSum(r, kk);
+		$tr.find('td[data-rscell="' + kk + '"]').attr("data-rs-sum", sum).find(".cell").text(rsFmtWon(r["sum_" + kk]));
+	}
+}
+
+function rsRenderRows(arr){
+
+	var $tbody = $("#roundstat-tbody-id");
+	if(!arr || arr.length < 1){
+		m_rsLastHistKey = null;
+		m_rsLastLiveSig = null;
+		$tbody.empty();
+		return;
+	}
+
+	var histKey = "";
+	for(var h = 1; h < arr.length; h++){
+		histKey += (h > 1 ? "\n" : "") + rsHistoryRowSig(arr[h]);
+	}
+	var liveSig = rsLiveRowSig(arr[0]);
+	var n = $tbody.find("tr").length;
+
+	if(n === arr.length && m_rsLastHistKey === histKey){
+		if(m_rsLastLiveSig === liveSig){
+			return;
+		}
+		rsPatchLiveRowOnly(arr[0]);
+		m_rsLastLiveSig = liveSig;
+		rsApplyLiveRowMinHighlight();
+		return;
+	}
+
+	m_rsLastHistKey = histKey;
+	m_rsLastLiveSig = liveSig;
+
+	var html = "";
+	for(var i = 0; i < arr.length; i++){
+		var r = arr[i];
+		var fid = r.bet_round_fid != null ? String(r.bet_round_fid) : "";
+		var rn = r.bet_round_no != null ? String(r.bet_round_no) : "";
+		var label = fid && rn ? (fid + "(" + rn + ")회") : (fid || rn || "—");
+		var isLive = i === 0;
+		html += "<tr>";
+		html += "<td><div class=\"cell\">PBG</div></td>";
+		html += "<td><div class=\"cell roundstat-cell-round\">" + label + "</div></td>";
+
+		if(isLive){
+			var k = ["pb_holu", "pb_jjak", "pb_under", "pb_over", "nb_holu", "nb_jjak", "nb_under", "nb_over"];
+			for(var c = 0; c < k.length; c++){
+				var kk = k[c];
+				var sum = rsCellSum(r, kk);
+				html += "<td data-rscell=\"" + kk + "\" data-rs-sum=\"" + sum + "\"><div class=\"cell\">" + rsFmtWon(r["sum_" + kk]) + "</div></td>";
+			}
+		} else {
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_holu) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_jjak) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_under) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_pb_over) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_holu) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_jjak) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_under) + "</div></td>";
+			html += "<td><div class=\"cell\">" + rsFmtWon(r.sum_nb_over) + "</div></td>";
+		}
+		html += "</tr>";
+	}
+	$tbody.html(html);
 	rsApplyLiveRowMinHighlight();
 }
 

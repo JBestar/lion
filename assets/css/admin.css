@@ -52109,6 +52109,17 @@ html.overflow-y-hidden {
     color: rgb(255, 208, 75);
 }
 
+/* 좌측 사이드 메뉴: 항목 호버 시 Element 기본 연한 배경 + 흰 글자 → 대비 확보 */
+.el-col-4 ul.el-menu .el-menu-item:focus,
+.el-col-4 ul.el-menu .el-menu-item:hover {
+    background-color: #ffd04b;
+    color: #1a1a1a !important;
+}
+.el-col-4 ul.el-menu .el-menu-item.is-active:focus,
+.el-col-4 ul.el-menu .el-menu-item.is-active:hover {
+    color: #1a1a1a !important;
+}
+
 .el-menu-item a {
     display:block;
     text-decoration: none;
