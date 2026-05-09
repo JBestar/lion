@@ -53,7 +53,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     <?php } ?>
                     <!-- <li class="el-menu-item <?=$menuitem_9?>" onclick="clickMenu(9);">구매변경</li>  -->
                     <li class="el-menu-item"  onclick="clickMenu(10);">로그아웃</li>
-                    <li class="el-menu-item"><a href="https://partner.lion7589.com" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; display: block;">카지노</a></li>
                 </ul>
             </div>
 

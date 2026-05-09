@@ -46,6 +46,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     <li class="el-menu-item <?=$menuitem_6?>"  onclick="clickMenu(6);">충환전내역2</li> 
                     <li class="el-menu-item <?=$menuitem_7?>"  onclick="clickMenu(7);">공지</li> 
                     <li class="el-menu-item <?=$menuitem_8?>"  onclick="clickMenu(8);">구매취소내역</li> 
+                    <li class="el-menu-item"><a href="https://partner.lion7589.com" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; display: block;">카지노</a></li>
                     <li class="el-menu-item"  onclick="clickMenu(9);">로그아웃</li>
                 </ul>
             </div>

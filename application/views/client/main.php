@@ -85,7 +85,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                             <div class="el-row ">
                                 <div class="el-col el-col-10">
                                     <button class="game-button select" id="bet-pbg-id" onclick="selectGame(0);">PBG파워볼</button> 
-                                    <a class="game-button" id="bet-eos5-id" href="https://partner.lion7589.com" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">카지노</a> 
+                                    <a class="game-button" id="bet-eos5-id" href="https://lion7589.com" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">카지노</a> 
                                     <button class="game-button" id="bet-coin5-id" onclick="alert('준비중입니다.');return false;">슬롯</button>
                                 </div>
                                 <div class="el-col el-col-6" style="text-align:center;">
