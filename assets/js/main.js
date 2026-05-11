@@ -2644,17 +2644,43 @@ function initEmpInfoDlg() {
 
 /**
  * 로컬 PrintServer 호출.
- * - HTTP/HTTPS 모두 동일 이름 창(LionPrintReceipt)으로 열어 PDF 보관/출력 UI가 보이게 한다.
+ * - 동일 이름 창(LionPrintReceipt)으로 열되, 작은 팝업 크기로 게임 화면을 덜 가린다.
+ * - PDF 저장 완료 시점은 다른 출처(127.0.0.1)라 웹에서 정확히 알 수 없음. 일정 시간 후 자동 닫기(폴백)만 적용한다.
  * @param {string} strUrl
  * @param {function({status:string}):void=} onResult
  */
 function openLocalPrintServerUrl(strUrl, onResult) {
     var winName = "LionPrintReceipt";
-    var w = window.open(strUrl, winName);
+    var pw = 110;
+    var ph = 100;
+    var left = Math.max(0, (window.screen && window.screen.availWidth ? window.screen.availWidth : 1200) - pw - 16);
+    var top = 48;
+    var feats = "scrollbars=yes,resizable=yes,status=no,toolbar=no,menubar=no,location=no,width=" + pw + ",height=" + ph + ",left=" + left + ",top=" + top;
+
+    if (window._lionReceiptCloseTimer) {
+        clearTimeout(window._lionReceiptCloseTimer);
+        window._lionReceiptCloseTimer = null;
+    }
+
+    var w = window.open(strUrl, winName, feats);
     if (w && typeof w.closed !== "undefined" && !w.closed) {
         try {
-            w.focus();
+            w.resizeTo(pw, ph);
+            w.moveTo(left, top);
         } catch (e) {}
+        setTimeout(function() {
+            try {
+                window.focus();
+            } catch (e2) {}
+        }, 100);
+        window._lionReceiptCloseTimer = setTimeout(function() {
+            window._lionReceiptCloseTimer = null;
+            try {
+                if (w && !w.closed) {
+                    w.close();
+                }
+            } catch (e3) {}
+        }, 3000);
         if (onResult) onResult({ status: "opened_window" });
         return;
     }
@@ -2665,6 +2691,11 @@ function openLocalPrintServerUrl(strUrl, onResult) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    setTimeout(function() {
+        try {
+            window.focus();
+        } catch (e4) {}
+    }, 100);
     if (onResult) onResult({ status: "opened_window" });
 }
 
