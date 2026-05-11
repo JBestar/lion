@@ -2757,15 +2757,21 @@ function saveToPDF(objBetInfo) {
     strUrl += "&userid=" + m_objUser.mb_fid;
     */
 
-    $.get(strUrl, function(data) {
-        console.log("[영수증] PrintServer response ok textStatus=success dataType=" + typeof data + " len=" + (data != null ? String(data).length : 0));
-    }).fail(function(jqXHR, textStatus, errorThrown) {
-        var st = jqXHR && jqXHR.status;
-        console.error("[영수증] PrintServer GET failed textStatus=" + textStatus + " errorThrown=" + errorThrown + " httpStatus=" + st + " state=" + (jqXHR && jqXHR.readyState) + " url=" + strUrl);
-        if (st === 0) {
-            console.warn("[영수증] httpStatus=0 는 보통 (1) HTTPS 페이지에서 http://127.0.0.1 로 XHR이 차단된 경우(mixed content), (2) 8000에 서비스가 없거나 방화벽으로 연결이 끊긴 경우입니다. 페이지 프로토콜=" + window.location.protocol + " — 주소창에 위 URL을 직접 열어 Print Server 동작 여부를 확인하세요.");
-        }
-    });
+    // XHR($.get)은 HTTPS(또는 공개 오리진)에서 http://127.0.0.1 로 요청 시 브라우저가 막는 경우가 많음.
+    // 주소창과 같이 "탭 네비게이션"으로 열면 Print Server는 동작하므로 새 탭으로 연다.
+    var printWin = window.open(strUrl, "_blank", "noopener,noreferrer");
+    if (printWin) {
+        console.log("[영수증] PrintServer opened in new tab");
+    } else {
+        var a = document.createElement("a");
+        a.href = strUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        console.log("[영수증] PrintServer open via <a target=_blank> (window.open was blocked?)");
+    }
 
 }
 
