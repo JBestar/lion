@@ -2760,7 +2760,11 @@ function saveToPDF(objBetInfo) {
     $.get(strUrl, function(data) {
         console.log("[영수증] PrintServer response ok textStatus=success dataType=" + typeof data + " len=" + (data != null ? String(data).length : 0));
     }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.error("[영수증] PrintServer GET failed textStatus=" + textStatus + " errorThrown=" + errorThrown + " httpStatus=" + (jqXHR && jqXHR.status) + " state=" + (jqXHR && jqXHR.readyState) + " url=" + strUrl);
+        var st = jqXHR && jqXHR.status;
+        console.error("[영수증] PrintServer GET failed textStatus=" + textStatus + " errorThrown=" + errorThrown + " httpStatus=" + st + " state=" + (jqXHR && jqXHR.readyState) + " url=" + strUrl);
+        if (st === 0) {
+            console.warn("[영수증] httpStatus=0 는 보통 (1) HTTPS 페이지에서 http://127.0.0.1 로 XHR이 차단된 경우(mixed content), (2) 8000에 서비스가 없거나 방화벽으로 연결이 끊긴 경우입니다. 페이지 프로토콜=" + window.location.protocol + " — 주소창에 위 URL을 직접 열어 Print Server 동작 여부를 확인하세요.");
+        }
     });
 
 }
