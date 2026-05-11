@@ -558,6 +558,7 @@ class Api extends CI_Controller {
 	}
 
 	public function pbbetinfo(){
+		$logHead = "Api.pbbetinfo ";
 		$jsonData = $_REQUEST['json_'];
 		$arrReqData = json_decode($jsonData, true);
 
@@ -567,8 +568,11 @@ class Api extends CI_Controller {
 			$this->load->model('member_model');	
 			$this->load->model('pbbet_model');	
 
-			$strUid = $this->sess_model->getUserId($nLogId);	
-			$objBetInfo = $this->pbbet_model->getOrderById($strUid, $arrReqData['bet_id']);
+			$strUid = $this->sess_model->getUserId($nLogId);
+			$reqBetId = is_array($arrReqData) && isset($arrReqData['bet_id']) ? $arrReqData['bet_id'] : null;
+			$objBetInfo = $this->pbbet_model->getOrderById($strUid, $reqBetId);
+			$betFidLog = is_object($objBetInfo) && isset($objBetInfo->bet_fid) ? $objBetInfo->bet_fid : 'null';
+			writeLog($logHead . "uid=" . $strUid . " req_bet_id=" . var_export($reqBetId, true) . " row_bet_fid=" . $betFidLog . " row_is_null=" . (is_null($objBetInfo) ? '1' : '0'));
 
 			$objResult = new StdClass;
 			$objResult->data = $objBetInfo;		
@@ -577,6 +581,7 @@ class Api extends CI_Controller {
 			echo json_encode($objResult);
 
 		} else{
+			writeLog($logHead . "logout_or_not_employee l=" . var_export($nLogId, true));
 			$arrResult['status'] = "logout";
 
 			echo json_encode($arrResult);	

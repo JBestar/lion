@@ -1216,6 +1216,7 @@ function doBet() {
                 requestRecentBetList("after_bet_success");
                 setTimeout(function() { requestAmountInfo(); }, 500);
 
+                console.log("[영수증] betting success game=" + getGameId() + " bet_fid=" + jResult.data + " typeof_data=" + typeof jResult.data);
                 //if(parseInt(m_objUser.mb_state_print) == 1){
                 setTimeout(function() { requestSavePDF(jResult.data); }, 800);
                 //}
@@ -1288,6 +1289,12 @@ function cancelBet(fid, objBtn) {
 
 function requestSavePDF(iBetId) {
 
+    console.log("[영수증] requestSavePDF start bet_id=" + iBetId + " typeof=" + typeof iBetId);
+    if (iBetId === undefined || iBetId === null || iBetId === "") {
+        console.warn("[영수증] requestSavePDF aborted: invalid bet_id");
+        return;
+    }
+
     var objData = { "bet_id": iBetId };
     var jsonData = JSON.stringify(objData);
 
@@ -1297,15 +1304,22 @@ function requestSavePDF(iBetId) {
         data: { json_: jsonData },
         url: "/api/pbbetinfo" + location.search,
         success: function(jResult) {
-            //console.log(jResult);
+            console.log("[영수증] pbbetinfo response status=" + (jResult && jResult.status) + " has_data=" + !!(jResult && jResult.data));
             if (jResult.status == "success") {
+                if (!jResult.data) {
+                    console.warn("[영수증] pbbetinfo success but data empty/null — saveToPDF skipped");
+                    return;
+                }
                 saveToPDF(jResult.data);
             } else if (jResult.status == "logout") {
+                console.warn("[영수증] pbbetinfo logout — page reload");
                 location.reload();
+            } else {
+                console.warn("[영수증] pbbetinfo unexpected status=" + (jResult && jResult.status), jResult);
             }
         },
         error: function(request, status, error) {
-            //console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+            console.error("[영수증] pbbetinfo ajax error status=" + request.status + " textStatus=" + status + " error=" + error + " responseSnippet=" + (request.responseText ? String(request.responseText).substring(0, 200) : ""));
         }
     });
 }
@@ -2648,8 +2662,10 @@ function initEmpInfoDlg() {
 
 function saveToPDF(objBetInfo) {
 
-    if (objBetInfo == null)
+    if (objBetInfo == null || typeof objBetInfo === "undefined") {
+        console.warn("[영수증] saveToPDF skipped: objBetInfo null/undefined");
         return;
+    }
     /*
     $("#el-pdf-time-id").text(  "구매날짜 :  "+objBetInfo.bet_time);
     $("#el-pdf-round-id").text( "추첨회차 :  "+objBetInfo.bet_round_fid);
@@ -2709,6 +2725,9 @@ function saveToPDF(objBetInfo) {
     strUrl += "&total=" + parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
     strUrl += "&userid=" + m_objUser.mb_fid;
 
+    console.log("[영수증] saveToPDF m_objRound.game=" + (m_objRound ? m_objRound.game : "m_objRound_missing") + " strRound=" + strRound + " bet_fid=" + objBetInfo.bet_fid);
+    console.log("[영수증] PrintServer GET " + strUrl);
+
     /*
     var data = {};
     data.round = objBetInfo.bet_round_fid;
@@ -2739,10 +2758,9 @@ function saveToPDF(objBetInfo) {
     */
 
     $.get(strUrl, function(data) {
-        //console.log(data);          
-
+        console.log("[영수증] PrintServer response ok textStatus=success dataType=" + typeof data + " len=" + (data != null ? String(data).length : 0));
     }).fail(function(jqXHR, textStatus, errorThrown) {
-        //console.log('getRequest failed! ' + textStatus); 
+        console.error("[영수증] PrintServer GET failed textStatus=" + textStatus + " errorThrown=" + errorThrown + " httpStatus=" + (jqXHR && jqXHR.status) + " state=" + (jqXHR && jqXHR.readyState) + " url=" + strUrl);
     });
 
 }
