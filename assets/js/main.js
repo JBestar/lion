@@ -2644,59 +2644,28 @@ function initEmpInfoDlg() {
 
 /**
  * 로컬 PrintServer 호출.
- * - HTTP: 숨김 iframe으로 호출하고 onload/timeout 으로 "응답 도달 여부"를 추정한다.
- * - HTTPS: 혼합 콘텐츠 제약으로 동일 이름 창으로 연다(응답 본문 확인은 불가).
+ * - HTTP/HTTPS 모두 동일 이름 창(LionPrintReceipt)으로 열어 PDF 보관/출력 UI가 보이게 한다.
  * @param {string} strUrl
  * @param {function({status:string}):void=} onResult
  */
 function openLocalPrintServerUrl(strUrl, onResult) {
-    if (window.location.protocol === "http:") {
-        var fid = "lion-print-receipt-iframe";
-        var iframe = document.getElementById(fid);
-        if (!iframe) {
-            iframe = document.createElement("iframe");
-            iframe.id = fid;
-            iframe.setAttribute("title", "영수증 인쇄");
-            iframe.style.cssText = "position:absolute;width:0;height:0;border:0;clip:rect(0,0,0,0);overflow:hidden;visibility:hidden";
-            document.body.appendChild(iframe);
-        }
-        var done = false;
-        var reqId = "rq_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-        iframe.setAttribute("data-print-reqid", reqId);
-        var tm = setTimeout(function() {
-            if (done) return;
-            done = true;
-            iframe.onload = null;
-            if (onResult) onResult({ status: "timeout" });
-        }, 5000);
-        iframe.onload = function() {
-            // 가장 마지막 요청 기준으로만 콜백 처리
-            if (iframe.getAttribute("data-print-reqid") !== reqId) return;
-            if (done) return;
-            done = true;
-            clearTimeout(tm);
-            iframe.onload = null;
-            if (onResult) onResult({ status: "response" });
-        };
-        iframe.src = strUrl;
-        return;
-    }
     var winName = "LionPrintReceipt";
     var w = window.open(strUrl, winName);
     if (w && typeof w.closed !== "undefined" && !w.closed) {
         try {
             w.focus();
         } catch (e) {}
-        if (onResult) onResult({ status: "opened" });
+        if (onResult) onResult({ status: "opened_window" });
         return;
     }
     var a = document.createElement("a");
     a.href = strUrl;
     a.target = winName;
+    a.rel = "noopener noreferrer";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    if (onResult) onResult({ status: "opened" });
+    if (onResult) onResult({ status: "opened_window" });
 }
 
 /*=============EmpInfoDialog=============== */
@@ -2817,12 +2786,8 @@ function saveToPDF(objBetInfo) {
 
     openLocalPrintServerUrl(strUrl, function(result) {
         if (!result || !result.status) return;
-        if (result.status === "response") {
-            showAlertBox(1, "영수증 출력 요청이 접수되었습니다.", 1500);
-        } else if (result.status === "opened") {
-            showAlertBox(1, "영수증 출력 요청을 전송했습니다.", 1500);
-        } else if (result.status === "timeout") {
-            showMessageBox(1, "영수증 출력 응답이 지연됩니다. Print Server 상태를 확인해주세요.");
+        if (result.status === "opened_window") {
+            showAlertBox(1, "영수증 창을 열었습니다. 보관/출력을 진행해주세요.", 1500);
         }
     });
 
