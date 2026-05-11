@@ -2642,6 +2642,33 @@ function initEmpInfoDlg() {
     $("#el-dialog-empinfo-print-id").prop('checked', m_objUser.mb_state_print == 1 ? true : false);
 }
 
+/** 로컬 PrintServer(127.0.0.1:8000) 호출: HTTP면 숨김 iframe, HTTPS면 동일 이름 창 재사용 */
+function openLocalPrintServerUrl(strUrl) {
+    if (window.location.protocol === "http:") {
+        var fid = "lion-print-receipt-iframe";
+        var iframe = document.getElementById(fid);
+        if (!iframe) {
+            iframe = document.createElement("iframe");
+            iframe.id = fid;
+            iframe.setAttribute("title", "영수증 출력");
+            iframe.style.cssText = "position:absolute;width:0;height:0;border:0;clip:rect(0,0,0,0);overflow:hidden;visibility:hidden";
+            document.body.appendChild(iframe);
+        }
+        iframe.src = strUrl;
+        return;
+    }
+    var winName = "LionPrintReceipt";
+    var w = window.open(strUrl, winName);
+    if (!w || typeof w.closed === "undefined" || w.closed) {
+        var a = document.createElement("a");
+        a.href = strUrl;
+        a.target = winName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+}
+
 /*=============EmpInfoDialog=============== */
 
 function saveToPDF(objBetInfo) {
@@ -2755,17 +2782,7 @@ function saveToPDF(objBetInfo) {
     strUrl += "&userid=" + m_objUser.mb_fid;
     */
 
-    // HTTPS 페이지에서 http://127.0.0.1 XHR은 차단되는 경우가 많아 새 탭으로 연다.
-    var printWin = window.open(strUrl, "_blank", "noopener,noreferrer");
-    if (!printWin) {
-        var a = document.createElement("a");
-        a.href = strUrl;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
+    openLocalPrintServerUrl(strUrl);
 
 }
 
