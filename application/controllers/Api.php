@@ -599,7 +599,7 @@ class Api extends CI_Controller {
 		$sIp = $this->input->ip_address();
 		$parts = array('ReceiptPrint', 'emp_uid=' . $strEmpUid, 'ip=' . $sIp);
 		if (is_array($arrReqData)) {
-			$keys = array('bet_fid', 'bet_mb_uid', 'bet_round_no', 'bet_round_fid', 'bet_mode', 'bet_money', 'bet_ratio', 'betname', 'game', 'print_param_round');
+			$keys = array('bet_fid', 'bet_mb_uid', 'bet_round_no', 'bet_round_fid', 'bet_mode', 'bet_money', 'bet_ratio', 'betname', 'game', 'print_param_round', 'print_url');
 			foreach ($keys as $k) {
 				if (!array_key_exists($k, $arrReqData)) {
 					continue;
@@ -607,6 +607,9 @@ class Api extends CI_Controller {
 				$v = $arrReqData[$k];
 				if (is_string($v)) {
 					$v = preg_replace('/\s+/', ' ', $v);
+					if ($k === 'print_url' && strlen($v) > 500) {
+						$v = substr($v, 0, 500) . '...';
+					}
 				}
 				$parts[] = $k . '=' . $v;
 			}

@@ -2642,7 +2642,12 @@ function initEmpInfoDlg() {
     $("#el-dialog-empinfo-print-id").prop('checked', m_objUser.mb_state_print == 1 ? true : false);
 }
 
-/** 로컬 PrintServer(127.0.0.1:8000) 호출: HTTP면 숨김 iframe, HTTPS면 동일 이름 창 재사용 */
+/**
+ * 로컬 PrintServer 호출.
+ * - HTTP: 숨김 iframe(탭/보관창 노출 최소화). 인쇄는 PrintServer가 요청 처리 시 스풀러로 보내야 함.
+ * - HTTPS: http 로컬 iframe은 혼합 콘텐츠로 막히는 경우가 많아 동일 이름 창으로만 연다.
+ * URL에 directprint=1 포함 — PrintServer2.0에서 직접 인쇄·inline 응답 등으로 맞추면 보관 UI 없이 쓰기 좋음.
+ */
 function openLocalPrintServerUrl(strUrl) {
     if (window.location.protocol === "http:") {
         var fid = "lion-print-receipt-iframe";
@@ -2650,7 +2655,7 @@ function openLocalPrintServerUrl(strUrl) {
         if (!iframe) {
             iframe = document.createElement("iframe");
             iframe.id = fid;
-            iframe.setAttribute("title", "영수증 출력");
+            iframe.setAttribute("title", "영수증 인쇄");
             iframe.style.cssText = "position:absolute;width:0;height:0;border:0;clip:rect(0,0,0,0);overflow:hidden;visibility:hidden";
             document.body.appendChild(iframe);
         }
@@ -2659,14 +2664,18 @@ function openLocalPrintServerUrl(strUrl) {
     }
     var winName = "LionPrintReceipt";
     var w = window.open(strUrl, winName);
-    if (!w || typeof w.closed === "undefined" || w.closed) {
-        var a = document.createElement("a");
-        a.href = strUrl;
-        a.target = winName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+    if (w && typeof w.closed !== "undefined" && !w.closed) {
+        try {
+            w.focus();
+        } catch (e) {}
+        return;
     }
+    var a = document.createElement("a");
+    a.href = strUrl;
+    a.target = winName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 /*=============EmpInfoDialog=============== */
@@ -2733,6 +2742,8 @@ function saveToPDF(objBetInfo) {
     strUrl += "&color=" + strColor;
     strUrl += "&total=" + parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
     strUrl += "&userid=" + m_objUser.mb_fid;
+    // PrintServer가 해석하면: PDF 보관 없이 기본 프린터로만 보내는 등 조용한 인쇄에 사용 가능
+    strUrl += "&directprint=1";
 
     var logPayload = {
         bet_fid: objBetInfo.bet_fid,
@@ -2744,7 +2755,8 @@ function saveToPDF(objBetInfo) {
         bet_ratio: objBetInfo.bet_ratio,
         betname: strBetName,
         game: m_objRound ? m_objRound.game : "",
-        print_param_round: strRound
+        print_param_round: strRound,
+        print_url: strUrl
     };
     $.ajax({
         type: "POST",
