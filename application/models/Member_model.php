@@ -77,6 +77,7 @@ class Member_model extends CI_Model {
         $this->db->select('mb_limit_round');
         $this->db->select('mb_limit_single');
         $this->db->select('mb_limit_mix');
+        $this->db->select('mb_state_print');
 
         $this->db->where('mb_emp_fid', $objUser->mb_fid);
         $this->db->where('mb_level', $nLevel);
@@ -143,6 +144,8 @@ class Member_model extends CI_Model {
         if(strlen($arrReqData['limix']) < 1)
             $arrReqData['limix'] = 0; 
 
+        $nPrint = (isset($arrReqData['mb_print']) && (int) $arrReqData['mb_print'] === 1) ? 1 : 0;
+
         if($arrReqData['level'] < MEMBER_AGENCY_LEVEL && $objAdmin->mb_game_pb_ratio < $arrReqData['ratio'])
             return 3;
         
@@ -158,6 +161,7 @@ class Member_model extends CI_Model {
         $this->db->set('mb_limit_round', $arrReqData['liround']);
         $this->db->set('mb_limit_single', $arrReqData['lisingle']);
         $this->db->set('mb_limit_mix', $arrReqData['limix']);
+        $this->db->set('mb_state_print', $nPrint);
 
         $bResult = $this->db->insert($this->mTableName);
         
@@ -205,6 +209,11 @@ class Member_model extends CI_Model {
         $this->db->set('mb_limit_round', $arrReqData['liround']);
         $this->db->set('mb_limit_single', $arrReqData['lisingle']);
         $this->db->set('mb_limit_mix', $arrReqData['limix']);
+
+        if (array_key_exists('mb_print', $arrReqData)) {
+            $nPrint = ((int) $arrReqData['mb_print'] === 1) ? 1 : 0;
+            $this->db->set('mb_state_print', $nPrint);
+        }
 
         $this->db->where('mb_fid', $objEmployee->mb_fid);
         

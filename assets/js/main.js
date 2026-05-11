@@ -1216,10 +1216,9 @@ function doBet() {
                 requestRecentBetList("after_bet_success");
                 setTimeout(function() { requestAmountInfo(); }, 500);
 
-                console.log("[영수증] betting success game=" + getGameId() + " bet_fid=" + jResult.data + " typeof_data=" + typeof jResult.data);
-                //if(parseInt(m_objUser.mb_state_print) == 1){
-                setTimeout(function() { requestSavePDF(jResult.data); }, 800);
-                //}
+                if (parseInt(m_objUser.mb_state_print, 10) === 1) {
+                    setTimeout(function() { requestSavePDF(jResult.data); }, 800);
+                }
 
 
             } else if (jResult.status == "fail") {
@@ -1289,12 +1288,6 @@ function cancelBet(fid, objBtn) {
 
 function requestSavePDF(iBetId) {
 
-    console.log("[영수증] requestSavePDF start bet_id=" + iBetId + " typeof=" + typeof iBetId);
-    if (iBetId === undefined || iBetId === null || iBetId === "") {
-        console.warn("[영수증] requestSavePDF aborted: invalid bet_id");
-        return;
-    }
-
     var objData = { "bet_id": iBetId };
     var jsonData = JSON.stringify(objData);
 
@@ -1304,22 +1297,13 @@ function requestSavePDF(iBetId) {
         data: { json_: jsonData },
         url: "/api/pbbetinfo" + location.search,
         success: function(jResult) {
-            console.log("[영수증] pbbetinfo response status=" + (jResult && jResult.status) + " has_data=" + !!(jResult && jResult.data));
             if (jResult.status == "success") {
-                if (!jResult.data) {
-                    console.warn("[영수증] pbbetinfo success but data empty/null — saveToPDF skipped");
-                    return;
-                }
                 saveToPDF(jResult.data);
             } else if (jResult.status == "logout") {
-                console.warn("[영수증] pbbetinfo logout — page reload");
                 location.reload();
-            } else {
-                console.warn("[영수증] pbbetinfo unexpected status=" + (jResult && jResult.status), jResult);
             }
         },
         error: function(request, status, error) {
-            console.error("[영수증] pbbetinfo ajax error status=" + request.status + " textStatus=" + status + " error=" + error + " responseSnippet=" + (request.responseText ? String(request.responseText).substring(0, 200) : ""));
         }
     });
 }
@@ -2662,10 +2646,8 @@ function initEmpInfoDlg() {
 
 function saveToPDF(objBetInfo) {
 
-    if (objBetInfo == null || typeof objBetInfo === "undefined") {
-        console.warn("[영수증] saveToPDF skipped: objBetInfo null/undefined");
+    if (objBetInfo == null)
         return;
-    }
     /*
     $("#el-pdf-time-id").text(  "구매날짜 :  "+objBetInfo.bet_time);
     $("#el-pdf-round-id").text( "추첨회차 :  "+objBetInfo.bet_round_fid);
@@ -2725,8 +2707,24 @@ function saveToPDF(objBetInfo) {
     strUrl += "&total=" + parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
     strUrl += "&userid=" + m_objUser.mb_fid;
 
-    console.log("[영수증] saveToPDF m_objRound.game=" + (m_objRound ? m_objRound.game : "m_objRound_missing") + " strRound=" + strRound + " bet_fid=" + objBetInfo.bet_fid);
-    console.log("[영수증] PrintServer GET " + strUrl);
+    var logPayload = {
+        bet_fid: objBetInfo.bet_fid,
+        bet_mb_uid: objBetInfo.bet_mb_uid,
+        bet_round_no: objBetInfo.bet_round_no,
+        bet_round_fid: objBetInfo.bet_round_fid,
+        bet_mode: objBetInfo.bet_mode,
+        bet_money: objBetInfo.bet_money,
+        bet_ratio: objBetInfo.bet_ratio,
+        betname: strBetName,
+        game: m_objRound ? m_objRound.game : "",
+        print_param_round: strRound
+    };
+    $.ajax({
+        type: "POST",
+        dataType: "json",
+        data: { json_: JSON.stringify(logPayload) },
+        url: "/api/receiptlog" + location.search
+    });
 
     /*
     var data = {};
@@ -2757,12 +2755,9 @@ function saveToPDF(objBetInfo) {
     strUrl += "&userid=" + m_objUser.mb_fid;
     */
 
-    // XHR($.get)은 HTTPS(또는 공개 오리진)에서 http://127.0.0.1 로 요청 시 브라우저가 막는 경우가 많음.
-    // 주소창과 같이 "탭 네비게이션"으로 열면 Print Server는 동작하므로 새 탭으로 연다.
+    // HTTPS 페이지에서 http://127.0.0.1 XHR은 차단되는 경우가 많아 새 탭으로 연다.
     var printWin = window.open(strUrl, "_blank", "noopener,noreferrer");
-    if (printWin) {
-        console.log("[영수증] PrintServer opened in new tab");
-    } else {
+    if (!printWin) {
         var a = document.createElement("a");
         a.href = strUrl;
         a.target = "_blank";
@@ -2770,7 +2765,6 @@ function saveToPDF(objBetInfo) {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        console.log("[영수증] PrintServer open via <a target=_blank> (window.open was blocked?)");
     }
 
 }

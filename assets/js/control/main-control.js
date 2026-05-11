@@ -17,6 +17,7 @@
 
     function initEmpDlg() {
         $("#el-dialog-employee-id .el-input__inner").val('');
+        $("#el-dialog-employee-print").prop("checked", false);
         $("#el-dialog-employee-uid").removeAttr("disabled");
         $("#el-dialog-employee-uid").attr("index", 0);
         $("#el-dialog-employee-uid-div").removeClass("is-disabled");
@@ -48,6 +49,7 @@
         $("#el-dialog-employee-liround").val(m_arrEmployee[idx].mb_limit_round);
         $("#el-dialog-employee-lisingle").val(m_arrEmployee[idx].mb_limit_single);
         $("#el-dialog-employee-limix").val(m_arrEmployee[idx].mb_limit_mix);
+        $("#el-dialog-employee-print").prop("checked", parseInt(m_arrEmployee[idx].mb_state_print, 10) === 1);
     }
 
     function deleteEmployee(idx) {
@@ -115,8 +117,7 @@
         objData.liround = $("#el-dialog-employee-liround").val();
         objData.lisingle = $("#el-dialog-employee-lisingle").val();
         objData.limix = $("#el-dialog-employee-limix").val();
-
-
+        objData.mb_print = $("#el-dialog-employee-print").is(":checked") ? 1 : 0;
 
         if (objData.uid.length < 1 || objData.nickname.length < 1 || objData.pwd.length < 1) {
             showMessageBox(1, "계정정보를 정확히 입력해주세요");

@@ -558,7 +558,6 @@ class Api extends CI_Controller {
 	}
 
 	public function pbbetinfo(){
-		$logHead = "Api.pbbetinfo ";
 		$jsonData = $_REQUEST['json_'];
 		$arrReqData = json_decode($jsonData, true);
 
@@ -568,11 +567,8 @@ class Api extends CI_Controller {
 			$this->load->model('member_model');	
 			$this->load->model('pbbet_model');	
 
-			$strUid = $this->sess_model->getUserId($nLogId);
-			$reqBetId = is_array($arrReqData) && isset($arrReqData['bet_id']) ? $arrReqData['bet_id'] : null;
-			$objBetInfo = $this->pbbet_model->getOrderById($strUid, $reqBetId);
-			$betFidLog = is_object($objBetInfo) && isset($objBetInfo->bet_fid) ? $objBetInfo->bet_fid : 'null';
-			writeLog($logHead . "uid=" . $strUid . " req_bet_id=" . var_export($reqBetId, true) . " row_bet_fid=" . $betFidLog . " row_is_null=" . (is_null($objBetInfo) ? '1' : '0'));
+			$strUid = $this->sess_model->getUserId($nLogId);	
+			$objBetInfo = $this->pbbet_model->getOrderById($strUid, $arrReqData['bet_id']);
 
 			$objResult = new StdClass;
 			$objResult->data = $objBetInfo;		
@@ -581,11 +577,44 @@ class Api extends CI_Controller {
 			echo json_encode($objResult);
 
 		} else{
-			writeLog($logHead . "logout_or_not_employee l=" . var_export($nLogId, true));
 			$arrResult['status'] = "logout";
 
 			echo json_encode($arrResult);	
 		}
+	}
+
+	/** 영수증(PrintServer) 발급 시도 시 파일 로그 (클라이언트가 호출) */
+	public function receiptlog(){
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arrReqData = is_string($jsonData) ? json_decode($jsonData, true) : null;
+
+		$nLogId = trim($this->input->get('l'));
+		if (!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) {
+			$arrResult['status'] = "logout";
+			echo json_encode($arrResult);
+			return;
+		}
+
+		$strEmpUid = $this->sess_model->getUserId($nLogId);
+		$sIp = $this->input->ip_address();
+		$parts = array('ReceiptPrint', 'emp_uid=' . $strEmpUid, 'ip=' . $sIp);
+		if (is_array($arrReqData)) {
+			$keys = array('bet_fid', 'bet_mb_uid', 'bet_round_no', 'bet_round_fid', 'bet_mode', 'bet_money', 'bet_ratio', 'betname', 'game', 'print_param_round');
+			foreach ($keys as $k) {
+				if (!array_key_exists($k, $arrReqData)) {
+					continue;
+				}
+				$v = $arrReqData[$k];
+				if (is_string($v)) {
+					$v = preg_replace('/\s+/', ' ', $v);
+				}
+				$parts[] = $k . '=' . $v;
+			}
+		}
+		writeLog(implode(' ', $parts));
+
+		$arrResult['status'] = "success";
+		echo json_encode($arrResult);
 	}
 
 	public function pbrecentbets(){

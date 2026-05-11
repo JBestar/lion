@@ -206,6 +206,15 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="el-form-item">
+                                <label class="el-form-item__label" style="width: 100px;">영수증발급</label>
+                                <div class="el-form-item__content" style="margin-left: 100px;">
+                                    <label style="cursor:pointer;">
+                                        <input type="checkbox" id="el-dialog-employee-print" autocomplete="off" style="zoom:1.3;vertical-align:middle;">
+                                        <span style="margin-left:6px;vertical-align:middle;">배팅 시 영수증(PDF) 자동 발급</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </form> 
                 </div>
