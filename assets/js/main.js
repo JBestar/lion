@@ -987,7 +987,8 @@ function fillSeniorBetListTable(arrBetData) {
                 lastCol = "<b><font color=\"red\">미적중</font></b>";
 
             var voUrl = vieworderUrlForBetRow(element);
-            tHtml += "<tr style=\"height:45px;\">";
+            var stripeCls = (i % 2 === 0) ? "senior-bet-list-stripe-a" : "senior-bet-list-stripe-b";
+            tHtml += "<tr class=\"senior-bet-list-row " + stripeCls + "\" style=\"height:45px;\">";
             tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\"><a href=\"#\" onclick=\"openMemWin(" + JSON.stringify(voUrl) + ",1200,850);return false;\">" + formatRoundDisplay(roundFid, roundNo, '회') + "</a></td>";
             tHtml += "<td style=\"width:34%;border-bottom:1px solid #515668;\"><span class=\"left\" style=\"padding-left:10px;\">" + betLabel + "</span></td>";
             tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\">" + betMoney.toLocaleString() + "</td>";

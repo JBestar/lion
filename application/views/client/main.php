@@ -10,7 +10,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <link rel="stylesheet" href="<?php echo base_url('assets/css/all.css');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=2');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/index_new.css?v=1');?>">
-    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=19');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=20');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/default.css?v=1');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/layout.css?v=1');?>">
     <!-- <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=').time();?>"> -->

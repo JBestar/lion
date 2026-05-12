@@ -299,3 +299,11 @@
     border-radius: 3px !important;
     padding: 9px 15px !important;
 }
+
+/* 배팅리스트 행: 밝음 / 어둠 교대 */
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-a td {
+    background-color: #3d4658 !important;
+}
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-b td {
+    background-color: #262c38 !important;
+}
