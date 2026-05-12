@@ -2752,6 +2752,10 @@ function saveToPDF(objBetInfo) {
         strColor = "red";
     }
 
+    var expectedPoints = parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money, 10);
+    if (isNaN(expectedPoints)) expectedPoints = 0;
+    var expectedPointsFmt = expectedPoints.toLocaleString("ko-KR");
+
     var strUrl = "http://127.0.0.1:8000/print?";
     strUrl += "round=" + strRound;
     strUrl += "&customer=" + objBetInfo.bet_mb_uid;
@@ -2762,7 +2766,7 @@ function saveToPDF(objBetInfo) {
     strUrl += "&tround=" + objBetInfo.bet_round_no;
     strUrl += "&usernm=" + objBetInfo.bet_mb_uid;
     strUrl += "&color=" + strColor;
-    strUrl += "&total=" + parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
+    strUrl += "&total=" + encodeURIComponent(expectedPointsFmt);
     strUrl += "&userid=" + m_objUser.mb_fid;
     // PrintServer가 해석하면: PDF 보관 없이 기본 프린터로만 보내는 등 조용한 인쇄에 사용 가능
     strUrl += "&directprint=1";
