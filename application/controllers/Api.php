@@ -620,6 +620,35 @@ class Api extends CI_Controller {
 		echo json_encode($arrResult);
 	}
 
+	/**
+	 * BIXOLON WebDriver 등 클라이언트 영수증 프린트 단계별 디버그 → application/logs/receipt_print_날짜.log
+	 * (프린터 없이 현장에서 배팅·영수증 시도 시 수집)
+	 */
+	public function receiptprintlog() {
+		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
+		$arrReqData = is_string($jsonData) ? json_decode($jsonData, true) : null;
+
+		$nLogId = trim($this->input->get('l'));
+		if (!is_login() || !$this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) {
+			$arrResult['status'] = "logout";
+			echo json_encode($arrResult);
+			return;
+		}
+
+		if (!is_array($arrReqData)) {
+			$arrResult['status'] = "fail";
+			echo json_encode($arrResult);
+			return;
+		}
+
+		$strEmpUid = $this->sess_model->getUserId($nLogId);
+		$sIp = $this->input->ip_address();
+		writeReceiptPrintDebugLog($strEmpUid, $sIp, $arrReqData);
+
+		$arrResult['status'] = "success";
+		echo json_encode($arrResult);
+	}
+
 	public function pbrecentbets(){
 		$jsonData = $_REQUEST['json_'];
 		$arrReqData = json_decode($jsonData, true);

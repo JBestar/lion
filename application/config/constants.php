@@ -133,5 +133,7 @@ defined('BET_CANCEL')            || define('BET_CANCEL', 4);
 
 defined('LOG_WRITE')            || define('LOG_WRITE', true);
 defined('LOG_FILE')             || define('LOG_FILE', "logs/");
+/** 영수증/BIXOLON 프린트 클라이언트 디버그 → application/logs/receipt_print_YYYY-MM-DD.log (Api::receiptprintlog) */
+defined('RECEIPT_PRINT_DEBUG_LOG') || define('RECEIPT_PRINT_DEBUG_LOG', true);
 
 defined('DUP_LOGIN')            || define('DUP_LOGIN', 3);

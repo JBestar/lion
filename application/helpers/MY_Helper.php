@@ -504,4 +504,39 @@
           writeLog($endpointLabel . " FAIL auth uid=" . $uid . " pwd_len=" . $pwdLen . " reason=password_not_match mb_level=" . $row->mb_level . " mb_state_delete=" . $row->mb_state_delete);
       }
   }
+
+if (!function_exists('writeReceiptPrintDebugLog')) {
+	/**
+	 * 영수증·BIXOLON WebDriver 연동 디버그 (한 줄 = JSON 1건).
+	 * @param string $emp_uid
+	 * @param string $ip
+	 * @param array  $entry 클라이언트가 보낸 phase·payload·응답 등
+	 */
+	function writeReceiptPrintDebugLog($emp_uid, $ip, array $entry) {
+		if (!defined('RECEIPT_PRINT_DEBUG_LOG') || !RECEIPT_PRINT_DEBUG_LOG) {
+			return;
+		}
+		$row = array_merge(
+			array(
+				'server_ts' => date('Y-m-d H:i:s'),
+				'emp_uid' => $emp_uid,
+				'ip' => $ip,
+			),
+			$entry
+		);
+		$flags = JSON_UNESCAPED_UNICODE;
+		if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+			$flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+		}
+		$json = json_encode($row, $flags);
+		if ($json === false) {
+			$json = '{"server_ts":"' . date('c') . '","json_encode":false}' . "\n";
+		} else {
+			$json .= "\n";
+		}
+		$sDate = date('Y-m-d');
+		$path = APPPATH . 'logs/receipt_print_' . $sDate . '.log';
+		@file_put_contents($path, $json, FILE_APPEND | LOCK_EX);
+	}
+}
 ?>

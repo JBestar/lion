@@ -2700,77 +2700,293 @@ function openLocalPrintServerUrl(strUrl, onResult) {
     if (onResult) onResult({ status: "opened_window" });
 }
 
+/** BIXOLON WebDriver 기본 URL (SRP-330II 등). 필요 시 `window.LION_BIXOLON_WEBDRIVER_ENDPOINT`로 덮어쓴다. */
+var LION_BIXOLON_WEBDRIVER_DEFAULT = "http://127.0.0.1:8080/webdriver/Printer1.bxl";
+
+function getBixolonWebDriverEndpoint() {
+    if (typeof window.LION_BIXOLON_WEBDRIVER_ENDPOINT === "string" && window.LION_BIXOLON_WEBDRIVER_ENDPOINT.length > 0) {
+        return window.LION_BIXOLON_WEBDRIVER_ENDPOINT;
+    }
+    return LION_BIXOLON_WEBDRIVER_DEFAULT;
+}
+
+/** 프린트 요청 응답의 `ResponseID`로 상태 조회 (`Printer1.bxl` → `Printer1/checkStatus.bxl`). */
+function getBixolonWebDriverCheckStatusUrl() {
+    if (typeof window.LION_BIXOLON_CHECKSTATUS_ENDPOINT === "string" && window.LION_BIXOLON_CHECKSTATUS_ENDPOINT.length > 0) {
+        return window.LION_BIXOLON_CHECKSTATUS_ENDPOINT;
+    }
+    var u = getBixolonWebDriverEndpoint();
+    if (/\/Printer1\.bxl$/i.test(u)) {
+        return u.replace(/\/Printer1\.bxl$/i, "/Printer1/checkStatus.bxl");
+    }
+    return "http://127.0.0.1:8080/webdriver/Printer1/checkStatus.bxl";
+}
+
+/** 서버 `application/logs/receipt_print_날짜.log` 적재용 (Api::receiptprintlog). 프린터 없이 현장 검증 시 수집. */
+function xhrReceiptPrintDebugSnap(xhr) {
+    if (!xhr) return null;
+    var rt = xhr.responseText || "";
+    return {
+        status: xhr.status,
+        statusText: xhr.statusText,
+        responseText_len: rt.length,
+        responseText_snip: rt.substring(0, 8000)
+    };
+}
+
+function logReceiptPrintDebug(obj) {
+    try {
+        var body = obj && typeof obj === "object" ? obj : { phase: "unknown", note: obj };
+        body.client_ts = new Date().toISOString();
+        if (typeof navigator !== "undefined") body.userAgent = navigator.userAgent;
+        if (typeof location !== "undefined") {
+            body.page_origin = location.origin;
+            body.page_path = location.pathname;
+        }
+        $.ajax({
+            url: "/api/receiptprintlog" + location.search,
+            type: "POST",
+            dataType: "json",
+            data: { json_: JSON.stringify(body) },
+            timeout: 25000
+        });
+    } catch (e) {}
+}
+
+function getReceiptPrinterGameTitle() {
+    var g = m_objRound && m_objRound.game != null ? parseInt(m_objRound.game, 10) : NaN;
+    if (isNaN(g)) g = 0;
+    if (g === 1) return "코인파워볼";
+    if (g === 2) return "EOS파워볼";
+    return "PBG파워볼";
+}
+
+function formatReceiptSaleDateTime(betTime) {
+    if (betTime == null || betTime === "") return "";
+    var s = String(betTime).trim();
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) return s;
+    if (typeof moment !== "undefined") {
+        var m = moment(s);
+        if (m.isValid()) return m.format("YYYY-MM-DD HH:mm:ss");
+    }
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+        var pad2 = function(n) { return (n < 10 ? "0" : "") + n; };
+        return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " +
+            pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+    }
+    return s;
+}
+
+function formatReceiptRatio(r) {
+    var n = parseFloat(r);
+    if (isNaN(n)) return "x-";
+    var rounded = Math.round(n * 100) / 100;
+    return "x" + rounded;
+}
+
+/** BIXOLON WebDriver `printText` 인자 — 동작 확인된 웹페이지와 동일 패턴(949 코드페이지). */
+function bixolonReceiptPrintText(text, kind) {
+    var t = text.indexOf("\n") >= 0 ? text : text + "\n";
+    if (kind === "title") return { printText: [t, 0, 17, 0, 0, 0, 1, 949] };
+    if (kind === "rule") return { printText: [t, 0, 0, 0, 0, 0, 0, 949] };
+    return { printText: [t, 0, 1, 0, 0, 0, 0, 949] };
+}
+
+/**
+ * 영수증 1건을 WebDriver JSON으로 구성한다.
+ * @param {object} objBetInfo pbbetinfo 응답
+ * @returns {{ mode:number, id:number, functions:object }}
+ */
+function buildBixolonReceiptWebDriverPayload(objBetInfo) {
+    /** 동작 확인된 웹페이지와 동일: 매 요청 `id`는 1 (WebDriver가 고정값을 기대하는 경우 대비) */
+    var reqId = 1;
+    var gameTitle = getReceiptPrinterGameTitle();
+    var storeLine = "[매장명] " + getBetCustomerName() + "\n";
+    var saleLine = "[매출일] " + formatReceiptSaleDateTime(objBetInfo.bet_time) + "\n";
+    var fidStr = objBetInfo.bet_round_fid != null && objBetInfo.bet_round_fid !== "" ? String(objBetInfo.bet_round_fid) : "";
+    var noStr = objBetInfo.bet_round_no != null && objBetInfo.bet_round_no !== "" ? String(objBetInfo.bet_round_no) : "";
+    var roundMainLine = "[회  차] " + (fidStr || noStr || "-") + "\n";
+    var roundSubLine = "[일회차] " + (noStr || "-") + "\n";
+    var sep = "-----------------------------------------\n";
+    var fullLabel = getBetListLabelSenior(objBetInfo);
+    var productOnly = String(fullLabel).replace(/\s*\[[\d.]+\]\s*$/, "").trim();
+    var productLine = "상품명\t\t" + productOnly + "\n";
+    var levelLine = "레벨\t\t" + formatReceiptRatio(objBetInfo.bet_ratio) + "\n";
+    var betMoney = parseInt(objBetInfo.bet_money, 10) || 0;
+    var expected = parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money, 10);
+    if (isNaN(expected)) expected = 0;
+    var moneyLine = "포인트\t\t" + betMoney.toLocaleString("ko-KR") + "\n";
+    var winLine = "예상당첨금\t\t" + expected.toLocaleString("ko-KR") + "\n\n";
+
+    var fn = {};
+    var idx = 0;
+    fn["func" + (idx++)] = { checkPrinterStatus: [] };
+    fn["func" + (idx++)] = bixolonReceiptPrintText("[" + gameTitle + " 영수증]\n\n", "title");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(storeLine, "normal");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(saleLine, "normal");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(roundMainLine, "normal");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(roundSubLine, "normal");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(sep, "rule");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(productLine, "normal");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(levelLine, "normal");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(moneyLine, "normal");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(sep, "rule");
+    fn["func" + (idx++)] = bixolonReceiptPrintText(winLine, "normal");
+    fn["func" + (idx++)] = { cutPaper: [65] };
+    if (window.LION_BIXOLON_OPEN_DRAWER !== false) {
+        fn["func" + (idx++)] = { openDrawer: [0] };
+    }
+    fn["func" + (idx++)] = { checkPrinterStatus: [] };
+
+    return { mode: 0, id: reqId, functions: fn };
+}
+
+/**
+ * 프린트 작업 상태 조회 (프린트 POST 응답의 RequestID / ResponseID 사용).
+ * Payload: {"RequestID":1,"ResponseID":"…","Timeout":30}
+ */
+function postBixolonWebDriverCheckStatus(requestId, responseId, onDone) {
+    var statusUrl = getBixolonWebDriverCheckStatusUrl();
+    var body = {
+        RequestID: requestId != null && requestId !== "" ? requestId : 1,
+        ResponseID: responseId,
+        Timeout: typeof window.LION_BIXOLON_CHECKSTATUS_TIMEOUT === "number" ? window.LION_BIXOLON_CHECKSTATUS_TIMEOUT : 30
+    };
+    logReceiptPrintDebug({
+        phase: "bixolon_check_status_request",
+        url: statusUrl,
+        request_body: body
+    });
+    $.ajax({
+        url: statusUrl,
+        type: "POST",
+        data: JSON.stringify(body),
+        contentType: "application/json; charset=UTF-8",
+        processData: false,
+        dataType: "json",
+        timeout: 35000,
+        success: function(res) {
+            logReceiptPrintDebug({
+                phase: "bixolon_check_status_response",
+                url: statusUrl,
+                response: res
+            });
+            if (onDone) onDone(null, res);
+        },
+        error: function(xhr, status, err) {
+            var msg = status === "timeout" ? "timeout" : (err || status || "error");
+            logReceiptPrintDebug({
+                phase: "bixolon_check_status_ajax_error",
+                url: statusUrl,
+                request_body: body,
+                ajax_status: status,
+                ajax_err: err,
+                xhr: xhrReceiptPrintDebugSnap(xhr)
+            });
+            if (onDone) onDone(msg, xhr);
+        }
+    });
+}
+
+/**
+ * BIXOLON WebDriver.exe(기본 8080)로 영수증 출력 후, 응답에 ResponseID가 있으면 checkStatus.bxl로 프린터 상태를 받는다.
+ * HTTPS 페이지에서는 http://127.0.0.1 로의 XHR이 차단될 수 있어, 클라이언트는 HTTP 접속을 권장한다.
+ * @param {function(?string, *):void} onDone (err, res) — 성공 시 res는 최종적으로 checkStatus 응답(없으면 프린트 응답)
+ */
+function postBixolonWebDriverPrint(payload, onDone) {
+    var url = getBixolonWebDriverEndpoint();
+    logReceiptPrintDebug({
+        phase: "bixolon_print_request",
+        url: url,
+        check_status_url: getBixolonWebDriverCheckStatusUrl(),
+        request_body: payload
+    });
+    $.ajax({
+        url: url,
+        type: "POST",
+        data: JSON.stringify(payload),
+        contentType: "application/json; charset=UTF-8",
+        processData: false,
+        dataType: "json",
+        timeout: 20000,
+        success: function(res) {
+            logReceiptPrintDebug({
+                phase: "bixolon_print_response",
+                url: url,
+                response: res
+            });
+            var rspId = res && (res.ResponseID != null ? res.ResponseID : res.responseId);
+            var reqId = res && (res.RequestID != null ? res.RequestID : res.requestId);
+            if (rspId != null && String(rspId).length > 0) {
+                var rid = reqId != null && reqId !== "" ? reqId : (payload && payload.id != null ? payload.id : 1);
+                postBixolonWebDriverCheckStatus(rid, rspId, function(err2, stRes) {
+                    if (onDone) onDone(err2, stRes);
+                });
+            } else {
+                logReceiptPrintDebug({
+                    phase: "bixolon_print_response_no_responseId",
+                    url: url,
+                    note: "checkStatus 생략 — 응답에 ResponseID 없음",
+                    response: res
+                });
+                if (onDone) onDone(null, res);
+            }
+        },
+        error: function(xhr, status, err) {
+            var msg = status === "timeout" ? "timeout" : (err || status || "error");
+            logReceiptPrintDebug({
+                phase: "bixolon_print_ajax_error",
+                url: url,
+                ajax_status: status,
+                ajax_err: err,
+                xhr: xhrReceiptPrintDebugSnap(xhr)
+            });
+            if (onDone) onDone(msg, xhr);
+        }
+    });
+}
+
 /*=============EmpInfoDialog=============== */
 
 function saveToPDF(objBetInfo) {
 
     if (objBetInfo == null)
         return;
-    /*
-    $("#el-pdf-time-id").text(  "구매날짜 :  "+objBetInfo.bet_time);
-    $("#el-pdf-round-id").text( "추첨회차 :  "+objBetInfo.bet_round_fid);
-    $("#el-pdf-num-id").text(   "일회차 :    "+objBetInfo.bet_round_no);
-    $("#el-pdf-name-id").text(  "구매자 :    "+objBetInfo.bet_mb_uid);
-    $("#el-pdf-mode-id").text(  "게임종류 :  "+getBetDetail(objBetInfo.bet_mode));
-    $("#el-pdf-ratio-id").text( "배당율 :    "+objBetInfo.bet_ratio);
-    $("#el-pdf-amount-id").text("포인트 :    "+parseInt(objBetInfo.bet_money).toLocaleString());
-    $("#el-pdf-win-id").text(   "예상포인트 : "+parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money).toLocaleString());
-    */
 
+    logReceiptPrintDebug({
+        phase: "saveToPDF_start",
+        mb_state_print: m_objUser ? m_objUser.mb_state_print : null,
+        m_objRound_game: m_objRound ? m_objRound.game : null,
+        bet_fid: objBetInfo.bet_fid,
+        bet_mb_uid: objBetInfo.bet_mb_uid,
+        bet_round_no: objBetInfo.bet_round_no,
+        bet_round_fid: objBetInfo.bet_round_fid,
+        bet_mode: objBetInfo.bet_mode,
+        bet_money: objBetInfo.bet_money,
+        bet_ratio: objBetInfo.bet_ratio,
+        bet_time: objBetInfo.bet_time,
+        print_endpoint: getBixolonWebDriverEndpoint(),
+        check_status_endpoint: getBixolonWebDriverCheckStatusUrl()
+    });
 
-    /*
-
-	    127.0.0.1:8000	/print?
-            round=1065322
-            &customer=%EA%B9%80%EC%82%AC%EC%9E%A5
-            &betid=802
-            &betname=%EC%A7%9D
-            &money=10000
-            &rate=1.93
-            &tround=144
-            &usernm=111
-            &color=blue
-            &total=19300
-            &userid=80024				
-
-        */
-    let strRound = "",
-        strBetName = "",
-        strColor = "";
-
+    var strRound = "";
+    var strBetName = "";
     if (m_objRound.game == 1) {
         strRound = objBetInfo.bet_round_no;
         strBetName = getBetDetail(objBetInfo.bet_mode);
-        strColor = "red";
-    }else if (m_objRound.game == 2) {
+    } else if (m_objRound.game == 2) {
         strRound = objBetInfo.bet_round_no;
         strBetName = getBetDetail(objBetInfo.bet_mode);
-        strColor = "red";
     } else {
         strRound = objBetInfo.bet_round_fid;
         strBetName = getBetDetail(objBetInfo.bet_mode);
-        strColor = "red";
     }
 
     var expectedPoints = parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money, 10);
     if (isNaN(expectedPoints)) expectedPoints = 0;
-    var expectedPointsFmt = expectedPoints.toLocaleString("ko-KR");
 
-    var strUrl = "http://127.0.0.1:8000/print?";
-    strUrl += "round=" + strRound;
-    strUrl += "&customer=" + objBetInfo.bet_mb_uid;
-    strUrl += "&betid=" + objBetInfo.bet_fid;
-    strUrl += "&betname=" + strBetName;
-    strUrl += "&money=" + objBetInfo.bet_money;
-    strUrl += "&rate=" + objBetInfo.bet_ratio;
-    strUrl += "&tround=" + objBetInfo.bet_round_no;
-    strUrl += "&usernm=" + objBetInfo.bet_mb_uid;
-    strUrl += "&color=" + strColor;
-    strUrl += "&total=" + encodeURIComponent(expectedPointsFmt);
-    strUrl += "&userid=" + m_objUser.mb_fid;
-    // PrintServer가 해석하면: PDF 보관 없이 기본 프린터로만 보내는 등 조용한 인쇄에 사용 가능
-    strUrl += "&directprint=1";
-
+    var wdUrl = getBixolonWebDriverEndpoint();
     var logPayload = {
         bet_fid: objBetInfo.bet_fid,
         bet_mb_uid: objBetInfo.bet_mb_uid,
@@ -2782,8 +2998,9 @@ function saveToPDF(objBetInfo) {
         betname: strBetName,
         game: m_objRound ? m_objRound.game : "",
         print_param_round: strRound,
-        print_url: strUrl
+        print_url: wdUrl + " (BIXOLON WebDriver POST)"
     };
+    logReceiptPrintDebug({ phase: "receiptlog_summary", receiptlog: logPayload });
     $.ajax({
         type: "POST",
         dataType: "json",
@@ -2791,42 +3008,25 @@ function saveToPDF(objBetInfo) {
         url: "/api/receiptlog" + location.search
     });
 
-    /*
-    var data = {};
-    data.round = objBetInfo.bet_round_fid;
-    data.customer = objBetInfo.bet_mb_uid;
-    data.betid = objBetInfo.bet_fid;
-    data.betname = getBetDetail(objBetInfo.bet_mode);
-    data.money = objBetInfo.bet_money;
-    data.rate = objBetInfo.bet_ratio;
-    data.tround = objBetInfo.bet_round_no;
-    data.usernm = objBetInfo.bet_mb_uid;
-    data.color = objBetInfo.red;
-    data.total = parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
-
-
-
-    var strUrl = "http://127.0.0.1:8000/print?";
-    strUrl += "round=" + objBetInfo.bet_round_fid;
-    strUrl += "&customer=" + objBetInfo.bet_mb_uid;
-    strUrl += "&betid=" + objBetInfo.bet_fid;
-    strUrl += "&betname=" + getBetDetail(objBetInfo.bet_mode);
-    strUrl += "&money=" + objBetInfo.bet_money;
-    strUrl += "&rate=" + objBetInfo.bet_ratio;
-    strUrl += "&tround=" + objBetInfo.bet_round_no;
-    strUrl += "&usernm=" + getBetCustomerName();
-    strUrl += "&color=red";
-    strUrl += "&total=" + parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money);
-    strUrl += "&userid=" + m_objUser.mb_fid;
-    */
-
-    openLocalPrintServerUrl(strUrl, function(result) {
-        if (!result || !result.status) return;
-        if (result.status === "opened_window") {
-            showAlertBox(1, "영수증 창을 열었습니다. 보관/출력을 진행해주세요.", 1500);
+    var payload = buildBixolonReceiptWebDriverPayload(objBetInfo);
+    postBixolonWebDriverPrint(payload, function(err, res) {
+        var ok = !err && res && (res.Result === "ready" || res.result === "ready");
+        logReceiptPrintDebug({
+            phase: "saveToPDF_flow_end",
+            err: err || null,
+            final_response: res,
+            ui_ready: ok
+        });
+        if (err) {
+            showAlertBox(0, "영수증 프린터(BIXOLON WebDriver) 요청 또는 상태 조회에 실패했습니다. WebDriver.exe 실행 및 포트 8080을 확인해 주세요.", 2800);
+            return;
+        }
+        if (ok) {
+            showAlertBox(1, "영수증을 프린터로 전송했습니다.", 1500);
+        } else {
+            showAlertBox(0, "영수증 출력 응답이 예상과 다릅니다.", 2000);
         }
     });
-
 }
 
 function speak(text, opt_prop) {
