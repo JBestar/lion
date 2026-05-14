@@ -2753,86 +2753,6 @@ function logReceiptPrintDebug(obj) {
     } catch (e) {}
 }
 
-/** WebDriver JSON: Result = 통신·상태 피드백 준비, Status = 하드웨어 상태(핵심) */
-function bixolonResultIsReady(res) {
-    if (!res) return false;
-    var r = res.Result != null ? String(res.Result) : (res.result != null ? String(res.result) : "");
-    var lr = r.toLowerCase();
-    return lr === "ready" || lr === "success";
-}
-
-function bixolonStatusNormalized(res) {
-    if (!res) return "";
-    var s = res.Status != null ? String(res.Status) : (res.status != null ? String(res.status) : "");
-    return String(s).trim();
-}
-
-/**
- * @returns {"success"|"warn"|"error"|"unknown"}
- */
-function bixolonClassifyPrinterStatus(res) {
-    var st = bixolonStatusNormalized(res);
-    if (st === "Normal") return "success";
-    if (st === "Paper Near End") return "warn";
-    if (st === "Paper Empty" || st === "Cover Open" || st === "Offline") return "error";
-    if (st.length > 0) return "error";
-    return "unknown";
-}
-
-/**
- * @param {boolean} skippedCheckStatus ResponseID 없이 프린트 응답만 받은 경우
- */
-function bixolonReceiptUiFromResponse(res, skippedCheckStatus) {
-    var resultReady = bixolonResultIsReady(res);
-    var st = bixolonStatusNormalized(res);
-    var tier = bixolonClassifyPrinterStatus(res);
-
-    if (skippedCheckStatus) {
-        return {
-            alertType: resultReady ? 1 : 0,
-            msg: resultReady
-                ? "영수증 출력 요청이 접수되었습니다. (응답에 ResponseID 없음 — 프린터 상세 상태는 확인하지 못했습니다.)"
-                : "영수증 출력 응답이 예상과 다릅니다.",
-            ms: resultReady ? 2400 : 2200,
-            tier: "unknown"
-        };
-    }
-
-    if (tier === "success" && st === "Normal") {
-        return { alertType: 1, msg: "영수증을 프린터로 전송했습니다. (프린터 정상 · Status Normal)", ms: 2000, tier: tier };
-    }
-    if (tier === "warn") {
-        return {
-            alertType: 1,
-            msg: "영수증이 출력되었습니다. 종이가 곧 떨어집니다(Status: Paper Near End). 교체를 권장합니다.",
-            ms: 4000,
-            tier: tier
-        };
-    }
-    if (tier === "error") {
-        var map = {
-            "Paper Empty": "프린터에 용지가 없습니다(Status: Paper Empty). 용지를 넣은 뒤 다시 시도해 주세요.",
-            "Cover Open": "프린터 덮개가 열려 있습니다(Status: Cover Open). 덮개를 닫은 뒤 다시 시도해 주세요.",
-            "Offline": "프린터가 꺼져 있거나 연결되지 않았습니다(Status: Offline). 전원·USB/네트워크 케이블을 확인해 주세요."
-        };
-        var msg = map[st] || ("프린터 상태 오류: " + st);
-        return { alertType: 0, msg: msg, ms: 3800, tier: tier };
-    }
-
-    if (resultReady && !st) {
-        return {
-            alertType: 1,
-            msg: "영수증 전송이 완료되었습니다. (응답에 Status 필드 없음 — 구버전 WebDriver일 수 있습니다.)",
-            ms: 2400,
-            tier: "unknown"
-        };
-    }
-    if (resultReady) {
-        return { alertType: 0, msg: "프린터 응답이 불명확합니다(Result는 정상인데 Status를 해석하지 못했습니다).", ms: 2600, tier: "unknown" };
-    }
-    return { alertType: 0, msg: "영수증 출력 응답이 예상과 다릅니다.", ms: 2200, tier: "unknown" };
-}
-
 function getReceiptPrinterGameTitle() {
     var g = m_objRound && m_objRound.game != null ? parseInt(m_objRound.game, 10) : NaN;
     if (isNaN(g)) g = 0;
@@ -2972,7 +2892,7 @@ function postBixolonWebDriverCheckStatus(requestId, responseId, onDone) {
 /**
  * BIXOLON WebDriver.exe(기본 8080)로 영수증 출력 후, 응답에 ResponseID가 있으면 checkStatus.bxl로 프린터 상태를 받는다.
  * HTTPS 페이지에서는 http://127.0.0.1 로의 XHR이 차단될 수 있어, 클라이언트는 HTTP 접속을 권장한다.
- * @param {function(?string, *, Object=):void} onDone (err, res, extra) — extra.skippedCheckStatus: ResponseID 없이 프린트 응답만 사용한 경우 true
+ * @param {function(?string, *):void} onDone (err, res) — 성공 시 res는 최종적으로 checkStatus 응답(없으면 프린트 응답)
  */
 function postBixolonWebDriverPrint(payload, onDone) {
     var url = getBixolonWebDriverEndpoint();
@@ -3001,7 +2921,7 @@ function postBixolonWebDriverPrint(payload, onDone) {
             if (rspId != null && String(rspId).length > 0) {
                 var rid = reqId != null && reqId !== "" ? reqId : (payload && payload.id != null ? payload.id : 1);
                 postBixolonWebDriverCheckStatus(rid, rspId, function(err2, stRes) {
-                    if (onDone) onDone(err2, stRes, { skippedCheckStatus: false });
+                    if (onDone) onDone(err2, stRes);
                 });
             } else {
                 logReceiptPrintDebug({
@@ -3010,7 +2930,7 @@ function postBixolonWebDriverPrint(payload, onDone) {
                     note: "checkStatus 생략 — 응답에 ResponseID 없음",
                     response: res
                 });
-                if (onDone) onDone(null, res, { skippedCheckStatus: true });
+                if (onDone) onDone(null, res);
             }
         },
         error: function(xhr, status, err) {
@@ -3089,28 +3009,23 @@ function saveToPDF(objBetInfo) {
     });
 
     var payload = buildBixolonReceiptWebDriverPayload(objBetInfo);
-    postBixolonWebDriverPrint(payload, function(err, res, extra) {
-        extra = extra || {};
-        var skippedCheck = !!extra.skippedCheckStatus;
-        var ui = null;
-        if (!err) {
-            ui = bixolonReceiptUiFromResponse(res, skippedCheck);
-        }
+    postBixolonWebDriverPrint(payload, function(err, res) {
+        var ok = !err && res && (res.Result === "ready" || res.result === "ready");
         logReceiptPrintDebug({
             phase: "saveToPDF_flow_end",
             err: err || null,
-            final_response: err ? xhrReceiptPrintDebugSnap(res) : res,
-            printer_status: !err ? bixolonStatusNormalized(res) : "",
-            printer_result_ready: !err ? bixolonResultIsReady(res) : false,
-            ui_tier: ui ? ui.tier : "ajax_error",
-            skipped_check_status: skippedCheck,
-            ui_alertType: ui ? ui.alertType : null
+            final_response: res,
+            ui_ready: ok
         });
         if (err) {
             showAlertBox(0, "영수증 프린터(BIXOLON WebDriver) 요청 또는 상태 조회에 실패했습니다. WebDriver.exe 실행 및 포트 8080을 확인해 주세요.", 2800);
             return;
         }
-        showAlertBox(ui.alertType, ui.msg, ui.ms);
+        if (ok) {
+            showAlertBox(1, "영수증을 프린터로 전송했습니다.", 1500);
+        } else {
+            showAlertBox(0, "영수증 출력 응답이 예상과 다릅니다.", 2000);
+        }
     });
 }
 
