@@ -2728,6 +2728,7 @@ function getBixolonWebDriverCheckStatusUrl() {
  * - `application/json`이 `status:0`(CORS)이면: `?bixolon_post=text_plain` 또는 `localStorage.setItem("LION_BIXOLON_POST_MODE","text_plain")`
  * - urlencoded만 쓰고 필드명만 바꿀 때: `?bixolon_field=실제키` 또는 `localStorage.setItem("LION_BIXOLON_FORM_FIELD","실제키")`
  * - WebDriver **400** + Header는 urlencoded인데 기성과 맞추려면: `?bixolon_post=sdk_urlencoded` (본문 JSON만, 빅솔론 Web Print SDK `bxlcommon.js`와 동일)
+ * **HTTPS** 페이지에서 WebDriver가 교차 출처이고 `LION_BIXOLON_POST_MODE`를 따로 안 썼으면, 기본 본문을 위와 같이 자동 적용(`data=` 생략). 예전 방식은 `?bixolon_post=form_data`.
  */
 (function lionApplyBixolonUrlStorageOverrides() {
     try {
@@ -2762,6 +2763,7 @@ function getBixolonWebDriverCheckStatusUrl() {
  * Payload에 JSON만 크게 보이는 것은 **한 개 폼 필드의 값**(URL 디코딩된 모습)인 경우가 많다. 키 이름은 Payload에서 "View source" / 파싱 전환으로 확인하거나, `curl`/프록시로 raw 본문을 본다.
  * 기본: `필드명=encodeURIComponent(JSON.stringify(obj))`, 필드명 기본 `data`, `window.LION_BIXOLON_FORM_FIELD`로 덮어쓰기.
  * **`sdk_urlencoded`**: `Content-Type: application/x-www-form-urlencoded` 이지만 **본문은 `data=` 없이 JSON 문자열 그대로**(빅솔론 Web Print SDK `bxlcommon.js` `requestPrint`와 동일). 기성(sn-cc.cc)이 200·Lion만 400일 때 우선 시험.
+ * **`form_data`**: 예전 Lion 기본(`data=`+encodeURIComponent(JSON))을 HTTPS에서도 강제할 때.
  * `lion.com`→`127.0.0.1`에서 `application/json`이 CORS(`status:0`)면 **`text_plain`**: 본문은 JSON 문자열, `Content-Type: text/plain`(단순 요청·프리플라이트 회피).
  * 본문을 MIME `application/json`으로 보낼 때: `application_json` 또는 `json`.
  */
@@ -2786,7 +2788,7 @@ function lionBixolonWebDriverTargetIsCrossOrigin() {
 }
 
 /**
- * @returns {{ data: string, contentType: string, processData: boolean, _corsDowngradeFromJson?: boolean }}
+ * @returns {{ data: string, contentType: string, processData: boolean, _corsDowngradeFromJson?: boolean, _httpsCrossOriginDefaultSdkBody?: boolean, _rawJsonUrlencodedBody?: boolean }}
  */
 function bixolonWebDriverPostBodyOptions(jsonObj) {
     var mode = typeof window.LION_BIXOLON_POST_MODE === "string" ? String(window.LION_BIXOLON_POST_MODE).toLowerCase() : "";
@@ -2815,7 +2817,25 @@ function bixolonWebDriverPostBodyOptions(jsonObj) {
         return {
             data: JSON.stringify(jsonObj),
             contentType: "application/x-www-form-urlencoded",
+            processData: false,
+            _rawJsonUrlencodedBody: true
+        };
+    }
+    if (mode === "form_data" || mode === "urlencoded_data" || mode === "data_field") {
+        return {
+            data: bixolonWebDriverUrlEncodedBody(jsonObj),
+            contentType: "application/x-www-form-urlencoded",
             processData: false
+        };
+    }
+    var postModeExplicit = typeof window.LION_BIXOLON_POST_MODE === "string" && window.LION_BIXOLON_POST_MODE.trim() !== "";
+    if (typeof location !== "undefined" && location.protocol === "https:" && lionBixolonWebDriverTargetIsCrossOrigin() && !postModeExplicit) {
+        return {
+            data: JSON.stringify(jsonObj),
+            contentType: "application/x-www-form-urlencoded",
+            processData: false,
+            _httpsCrossOriginDefaultSdkBody: true,
+            _rawJsonUrlencodedBody: true
         };
     }
     return {
@@ -3142,6 +3162,7 @@ function postBixolonWebDriverCheckStatus(requestId, responseId, onDone) {
     $.ajax({
         url: statusUrl,
         type: "POST",
+        headers: { Accept: "*/*" },
         data: postOpts.data,
         contentType: postOpts.contentType,
         processData: postOpts.processData,
@@ -3187,16 +3208,27 @@ function postBixolonWebDriverPrint(payload, onDone) {
         ajax_content_type: printPost.contentType,
         request_summary: bixolonWebDriverPayloadSummary(payload)
     };
+    if (printPost._httpsCrossOriginDefaultSdkBody) {
+        printLog.post_mode = "https_auto_sdk_urlencoded";
+    }
     if (String(printPost.contentType).indexOf("urlencoded") >= 0) {
-        printLog.form_field = typeof window.LION_BIXOLON_FORM_FIELD === "string" && window.LION_BIXOLON_FORM_FIELD.length > 0 ? window.LION_BIXOLON_FORM_FIELD : "data";
+        if (printPost._rawJsonUrlencodedBody) {
+            printLog.urlencoded_body = "raw_json_string";
+        } else {
+            printLog.form_field = typeof window.LION_BIXOLON_FORM_FIELD === "string" && window.LION_BIXOLON_FORM_FIELD.length > 0 ? window.LION_BIXOLON_FORM_FIELD : "data";
+        }
     }
     if (printPost._corsDowngradeFromJson) {
         printLog.cors_downgrade = "application_json_to_text_plain_cross_origin";
+    }
+    if (printPost._httpsCrossOriginDefaultSdkBody) {
+        printLog.https_default_body = "sdk_urlencoded_style_json_only";
     }
     logReceiptPrintDebug(printLog);
     $.ajax({
         url: url,
         type: "POST",
+        headers: { Accept: "*/*" },
         data: printPost.data,
         contentType: printPost.contentType,
         processData: printPost.processData,
