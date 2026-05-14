@@ -2722,7 +2722,101 @@ function getBixolonWebDriverCheckStatusUrl() {
     return "http://127.0.0.1:8080/webdriver/Printer1/checkStatus.bxl";
 }
 
-/** 서버 `application/logs/receipt_print_날짜.log` 적재용 (Api::receiptprintlog). 프린터 없이 현장 검증 시 수집. */
+/**
+ * 로컬에서 400일 때 전송 방식을 바꿔 시험 (서버에서 이미 `window.LION_BIXOLON_POST_MODE`를 넣었다면 건드리지 않음).
+ * - 주소에 `?bixolon_post=application_json` 붙이고 새로고침 후 영수증 출력
+ * - `application/json`이 `status:0`(CORS)이면: `?bixolon_post=text_plain` 또는 `localStorage.setItem("LION_BIXOLON_POST_MODE","text_plain")`
+ * - urlencoded만 쓰고 필드명만 바꿀 때: `?bixolon_field=실제키` 또는 `localStorage.setItem("LION_BIXOLON_FORM_FIELD","실제키")`
+ */
+(function lionApplyBixolonUrlStorageOverrides() {
+    try {
+        if (typeof window === "undefined" || !window.location) return;
+        var q = window.location.search || "";
+        var pick = function(name) {
+            var re = new RegExp("[?&]" + name + "=([^&]*)");
+            var m = re.exec(q);
+            return m && m[1] != null && m[1] !== "" ? decodeURIComponent(m[1].replace(/\+/g, " ")).trim() : "";
+        };
+        if (!(typeof window.LION_BIXOLON_POST_MODE === "string" && window.LION_BIXOLON_POST_MODE.length > 0)) {
+            var bp = pick("bixolon_post");
+            if (bp) window.LION_BIXOLON_POST_MODE = bp;
+            else if (typeof localStorage !== "undefined") {
+                var ls = localStorage.getItem("LION_BIXOLON_POST_MODE");
+                if (ls && ls.length > 0) window.LION_BIXOLON_POST_MODE = ls;
+            }
+        }
+        if (!(typeof window.LION_BIXOLON_FORM_FIELD === "string" && window.LION_BIXOLON_FORM_FIELD.length > 0)) {
+            var bf = pick("bixolon_field");
+            if (bf) window.LION_BIXOLON_FORM_FIELD = bf;
+            else if (typeof localStorage !== "undefined") {
+                var lsf = localStorage.getItem("LION_BIXOLON_FORM_FIELD");
+                if (lsf && lsf.length > 0) window.LION_BIXOLON_FORM_FIELD = lsf;
+            }
+        }
+    } catch (e) { /* ignore */ }
+})();
+
+/**
+ * 기성(sn-cc.cc 등) Network **Headers**에 `Content-Type: application/x-www-form-urlencoded`로 찍히는 경우가 많음.
+ * Payload에 JSON만 크게 보이는 것은 **한 개 폼 필드의 값**(URL 디코딩된 모습)인 경우가 많다. 키 이름은 Payload에서 "View source" / 파싱 전환으로 확인하거나, `curl`/프록시로 raw 본문을 본다.
+ * 기본: `필드명=encodeURIComponent(JSON.stringify(obj))`, 필드명 기본 `data`, `window.LION_BIXOLON_FORM_FIELD`로 덮어쓰기.
+ * `lion.com`→`127.0.0.1`에서 `application/json`이 CORS(`status:0`)면 **`text_plain`**: 본문은 JSON 문자열, `Content-Type: text/plain`(단순 요청·프리플라이트 회피).
+ * 본문을 MIME `application/json`으로 보낼 때: `application_json` 또는 `json`.
+ */
+function bixolonWebDriverUrlEncodedBody(jsonObj) {
+    var field = typeof window.LION_BIXOLON_FORM_FIELD === "string" && window.LION_BIXOLON_FORM_FIELD.length > 0
+        ? window.LION_BIXOLON_FORM_FIELD
+        : "data";
+    return field + "=" + encodeURIComponent(JSON.stringify(jsonObj));
+}
+
+/** WebDriver URL이 현재 페이지와 다른 origin이면 true (application/json 프리플라이트 CORS 이슈). */
+function lionBixolonWebDriverTargetIsCrossOrigin() {
+    try {
+        if (typeof location === "undefined" || !location.href) return false;
+        var ep = getBixolonWebDriverEndpoint();
+        if (!ep || typeof ep !== "string") return false;
+        var u = new URL(ep, location.href);
+        return u.origin !== location.origin;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * @returns {{ data: string, contentType: string, processData: boolean, _corsDowngradeFromJson?: boolean }}
+ */
+function bixolonWebDriverPostBodyOptions(jsonObj) {
+    var mode = typeof window.LION_BIXOLON_POST_MODE === "string" ? String(window.LION_BIXOLON_POST_MODE).toLowerCase() : "";
+    var downgradeFromJson = false;
+    if ((mode === "application_json" || mode === "json" || mode === "raw_json") && lionBixolonWebDriverTargetIsCrossOrigin()) {
+        downgradeFromJson = true;
+        mode = "text_plain";
+    }
+    if (mode === "application_json" || mode === "json" || mode === "raw_json") {
+        return {
+            data: JSON.stringify(jsonObj),
+            contentType: "application/json",
+            processData: false
+        };
+    }
+    if (mode === "text_plain" || mode === "textplain") {
+        var plain = {
+            data: JSON.stringify(jsonObj),
+            contentType: "text/plain",
+            processData: false
+        };
+        if (downgradeFromJson) plain._corsDowngradeFromJson = true;
+        return plain;
+    }
+    return {
+        data: bixolonWebDriverUrlEncodedBody(jsonObj),
+        contentType: "application/x-www-form-urlencoded",
+        processData: false
+    };
+}
+
+/** 서버 `application/logs/receipt_print_날짜.log` 적재용 (Api::receiptprintlog). 요약만 기록해 용량을 줄인다. */
 function xhrReceiptPrintDebugSnap(xhr) {
     if (!xhr) return null;
     var rt = xhr.responseText || "";
@@ -2730,15 +2824,110 @@ function xhrReceiptPrintDebugSnap(xhr) {
         status: xhr.status,
         statusText: xhr.statusText,
         responseText_len: rt.length,
-        responseText_snip: rt.substring(0, 8000)
+        responseText_snip: rt.substring(0, 500)
     };
+}
+
+/** WebDriver 프린트 JSON → 로그용 짧은 요약(전체 functions 미포함) */
+function bixolonWebDriverPayloadSummary(payload) {
+    var fn = payload && payload.functions;
+    var preview = [];
+    var n = 0;
+    if (fn && typeof fn === "object") {
+        var keys = Object.keys(fn).sort(function(a, b) {
+            var na = parseInt(String(a).replace(/\D/g, ""), 10) || 0;
+            var nb = parseInt(String(b).replace(/\D/g, ""), 10) || 0;
+            return na - nb;
+        });
+        n = keys.length;
+        for (var i = 0; i < keys.length && preview.length < 10; i++) {
+            var v = fn[keys[i]];
+            if (!v || typeof v !== "object") continue;
+            var cmd = Object.keys(v)[0];
+            if (cmd === "printText" && v.printText && v.printText[0] != null) {
+                var line = String(v.printText[0]).replace(/\r/g, "").replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+                if (line.length > 40) line = line.substring(0, 40) + "…";
+                preview.push({ f: keys[i], printText: line });
+            } else {
+                preview.push({ f: keys[i], cmd: cmd || "?" });
+            }
+        }
+    }
+    return {
+        mode: payload ? payload.mode : null,
+        id: payload ? payload.id : null,
+        function_count: n,
+        preview: preview
+    };
+}
+
+/** WebDriver 응답 JSON → Result/Status 등 핵심만 */
+function bixolonWebDriverJsonSummary(res) {
+    if (!res || typeof res !== "object") return res;
+    if (typeof res.status === "number" && "responseText" in res) return xhrReceiptPrintDebugSnap(res);
+    return {
+        RequestID: res.RequestID != null ? res.RequestID : res.requestId,
+        ResponseID: res.ResponseID != null ? res.ResponseID : res.responseId,
+        Result: res.Result != null ? res.Result : res.result,
+        Status: res.Status != null ? res.Status : res.status
+    };
+}
+
+function bixolonDiagnoseAjaxFailure(xhr) {
+    var snap = xhrReceiptPrintDebugSnap(xhr);
+    var httpStatus = snap && typeof snap.status === "number" ? snap.status : -1;
+    var host = typeof location !== "undefined" ? String(location.hostname || "").toLowerCase() : "";
+    var proto = typeof location !== "undefined" ? String(location.protocol || "") : "";
+    var out = {
+        likely_cors: false,
+        likely_mixed_content: false,
+        likely_webdriver_unreachable: false,
+        hint: ""
+    };
+    if (proto === "https:") {
+        out.likely_mixed_content = true;
+        out.hint = "https_page_blocks_http_localhost";
+        return out;
+    }
+    if (httpStatus === 0 && host && host !== "127.0.0.1" && host !== "localhost") {
+        out.likely_cors = true;
+        out.hint = "cross_origin_to_127.0.0.1_typically_cors";
+        return out;
+    }
+    if (httpStatus === 0) {
+        out.likely_webdriver_unreachable = true;
+        out.hint = "connection_failed_or_webdriver_off";
+        return out;
+    }
+    if (httpStatus === 400) {
+        out.hint = "bad_request_body_or_content_type";
+        return out;
+    }
+    out.hint = "http_status_" + httpStatus;
+    return out;
+}
+
+function bixolonReceiptAjaxFailUserMessage(xhr) {
+    var d = bixolonDiagnoseAjaxFailure(xhr);
+    var snap = xhrReceiptPrintDebugSnap(xhr);
+    var httpStatus = snap && typeof snap.status === "number" ? snap.status : -1;
+    var base = "영수증 프린터(BIXOLON WebDriver) 요청 또는 상태 조회에 실패했습니다.";
+    if (d.likely_mixed_content) {
+        return base + " HTTPS 사이트에서는 브라우저가 http://127.0.0.1:8080 접속을 막을 수 있습니다.";
+    }
+    if (d.likely_cors) {
+        return base + " 접속 주소와 WebDriver(127.0.0.1)가 달라 CORS로 실패한 경우가 많습니다. `application/json`은 OPTIONS 프리플라이트로 `status:0`이 나기 쉽습니다. 주소에 `?bixolon_post=text_plain`을 붙여 재시도하거나, WebDriver CORS 설정·동일 출처 프록시를 확인해 주세요.";
+    }
+    if (httpStatus === 400) {
+        return base + " 서버가 요청 본문을 거절했습니다(HTTP 400). 기본은 x-www-form-urlencoded(`data=` 등)입니다. 기성 Network의 필드명에 맞춰 `LION_BIXOLON_FORM_FIELD`를 쓰거나, `LION_BIXOLON_POST_MODE`로 `text_plain`·`application_json`을 시도해 보세요.";
+    }
+    return base + " WebDriver.exe 실행, 포트 8080, 방화벽을 확인해 주세요.";
 }
 
 function logReceiptPrintDebug(obj) {
     try {
         var body = obj && typeof obj === "object" ? obj : { phase: "unknown", note: obj };
         body.client_ts = new Date().toISOString();
-        if (typeof navigator !== "undefined") body.userAgent = navigator.userAgent;
         if (typeof location !== "undefined") {
             body.page_origin = location.origin;
             body.page_path = location.pathname;
@@ -2933,24 +3122,26 @@ function postBixolonWebDriverCheckStatus(requestId, responseId, onDone) {
         ResponseID: responseId,
         Timeout: typeof window.LION_BIXOLON_CHECKSTATUS_TIMEOUT === "number" ? window.LION_BIXOLON_CHECKSTATUS_TIMEOUT : 30
     };
+    var postOpts = bixolonWebDriverPostBodyOptions(body);
     logReceiptPrintDebug({
         phase: "bixolon_check_status_request",
         url: statusUrl,
-        request_body: body
+        ajax_content_type: postOpts.contentType,
+        check_status: { RequestID: body.RequestID, ResponseID_len: body.ResponseID != null ? String(body.ResponseID).length : 0, Timeout: body.Timeout }
     });
     $.ajax({
         url: statusUrl,
         type: "POST",
-        data: JSON.stringify(body),
-        contentType: "application/json; charset=UTF-8",
-        processData: false,
+        data: postOpts.data,
+        contentType: postOpts.contentType,
+        processData: postOpts.processData,
         dataType: "json",
         timeout: 35000,
         success: function(res) {
             logReceiptPrintDebug({
                 phase: "bixolon_check_status_response",
                 url: statusUrl,
-                response: res
+                response_summary: bixolonWebDriverJsonSummary(res)
             });
             if (onDone) onDone(null, res);
         },
@@ -2959,10 +3150,11 @@ function postBixolonWebDriverCheckStatus(requestId, responseId, onDone) {
             logReceiptPrintDebug({
                 phase: "bixolon_check_status_ajax_error",
                 url: statusUrl,
-                request_body: body,
+                check_status: { RequestID: body.RequestID, ResponseID_len: body.ResponseID != null ? String(body.ResponseID).length : 0 },
                 ajax_status: status,
                 ajax_err: err,
-                xhr: xhrReceiptPrintDebugSnap(xhr)
+                xhr: xhrReceiptPrintDebugSnap(xhr),
+                diagnosis: bixolonDiagnoseAjaxFailure(xhr)
             });
             if (onDone) onDone(msg, xhr);
         }
@@ -2976,25 +3168,35 @@ function postBixolonWebDriverCheckStatus(requestId, responseId, onDone) {
  */
 function postBixolonWebDriverPrint(payload, onDone) {
     var url = getBixolonWebDriverEndpoint();
-    logReceiptPrintDebug({
+    var printPost = bixolonWebDriverPostBodyOptions(payload);
+    var printLog = {
         phase: "bixolon_print_request",
         url: url,
         check_status_url: getBixolonWebDriverCheckStatusUrl(),
-        request_body: payload
-    });
+        post_mode: typeof window.LION_BIXOLON_POST_MODE === "string" && window.LION_BIXOLON_POST_MODE ? window.LION_BIXOLON_POST_MODE : "default_form_urlencoded",
+        ajax_content_type: printPost.contentType,
+        request_summary: bixolonWebDriverPayloadSummary(payload)
+    };
+    if (String(printPost.contentType).indexOf("urlencoded") >= 0) {
+        printLog.form_field = typeof window.LION_BIXOLON_FORM_FIELD === "string" && window.LION_BIXOLON_FORM_FIELD.length > 0 ? window.LION_BIXOLON_FORM_FIELD : "data";
+    }
+    if (printPost._corsDowngradeFromJson) {
+        printLog.cors_downgrade = "application_json_to_text_plain_cross_origin";
+    }
+    logReceiptPrintDebug(printLog);
     $.ajax({
         url: url,
         type: "POST",
-        data: JSON.stringify(payload),
-        contentType: "application/json; charset=UTF-8",
-        processData: false,
+        data: printPost.data,
+        contentType: printPost.contentType,
+        processData: printPost.processData,
         dataType: "json",
         timeout: 20000,
         success: function(res) {
             logReceiptPrintDebug({
                 phase: "bixolon_print_response",
                 url: url,
-                response: res
+                response_summary: bixolonWebDriverJsonSummary(res)
             });
             var rspId = res && (res.ResponseID != null ? res.ResponseID : res.responseId);
             var reqId = res && (res.RequestID != null ? res.RequestID : res.requestId);
@@ -3007,8 +3209,8 @@ function postBixolonWebDriverPrint(payload, onDone) {
                 logReceiptPrintDebug({
                     phase: "bixolon_print_response_no_responseId",
                     url: url,
-                    note: "checkStatus 생략 — 응답에 ResponseID 없음",
-                    response: res
+                    note: "checkStatus 생략",
+                    response_summary: bixolonWebDriverJsonSummary(res)
                 });
                 if (onDone) onDone(null, res, { skippedCheckStatus: true });
             }
@@ -3020,7 +3222,8 @@ function postBixolonWebDriverPrint(payload, onDone) {
                 url: url,
                 ajax_status: status,
                 ajax_err: err,
-                xhr: xhrReceiptPrintDebugSnap(xhr)
+                xhr: xhrReceiptPrintDebugSnap(xhr),
+                diagnosis: bixolonDiagnoseAjaxFailure(xhr)
             });
             if (onDone) onDone(msg, xhr);
         }
@@ -3046,8 +3249,8 @@ function saveToPDF(objBetInfo) {
         bet_money: objBetInfo.bet_money,
         bet_ratio: objBetInfo.bet_ratio,
         bet_time: objBetInfo.bet_time,
-        print_endpoint: getBixolonWebDriverEndpoint(),
-        check_status_endpoint: getBixolonWebDriverCheckStatusUrl()
+        print_url: getBixolonWebDriverEndpoint(),
+        check_status_url: getBixolonWebDriverCheckStatusUrl()
     });
 
     var strRound = "";
@@ -3080,7 +3283,7 @@ function saveToPDF(objBetInfo) {
         print_param_round: strRound,
         print_url: wdUrl + " (BIXOLON WebDriver POST)"
     };
-    logReceiptPrintDebug({ phase: "receiptlog_summary", receiptlog: logPayload });
+    logReceiptPrintDebug({ phase: "receiptlog_summary", bet_fid: logPayload.bet_fid, game: logPayload.game, print_url_snip: (wdUrl + "").substring(0, 80) });
     $.ajax({
         type: "POST",
         dataType: "json",
@@ -3099,15 +3302,18 @@ function saveToPDF(objBetInfo) {
         logReceiptPrintDebug({
             phase: "saveToPDF_flow_end",
             err: err || null,
-            final_response: err ? xhrReceiptPrintDebugSnap(res) : res,
+            response_summary: err ? xhrReceiptPrintDebugSnap(res) : bixolonWebDriverJsonSummary(res),
             printer_status: !err ? bixolonStatusNormalized(res) : "",
             printer_result_ready: !err ? bixolonResultIsReady(res) : false,
             ui_tier: ui ? ui.tier : "ajax_error",
             skipped_check_status: skippedCheck,
-            ui_alertType: ui ? ui.alertType : null
+            ui_alertType: ui ? ui.alertType : null,
+            diagnosis: err && res ? bixolonDiagnoseAjaxFailure(res) : null
         });
         if (err) {
-            showAlertBox(0, "영수증 프린터(BIXOLON WebDriver) 요청 또는 상태 조회에 실패했습니다. WebDriver.exe 실행 및 포트 8080을 확인해 주세요.", 2800);
+            var xhrObj = res && typeof res.status === "number" ? res : null;
+            var failMsg = xhrObj ? bixolonReceiptAjaxFailUserMessage(xhrObj) : "영수증 프린터(BIXOLON WebDriver) 요청 또는 상태 조회에 실패했습니다. WebDriver.exe 실행 및 포트 8080을 확인해 주세요.";
+            showAlertBox(0, failMsg, 4200);
             return;
         }
         showAlertBox(ui.alertType, ui.msg, ui.ms);
