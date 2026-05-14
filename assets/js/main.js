@@ -1212,13 +1212,13 @@ function doBet() {
             $("#bet-btn-id").removeClass("is-loading");
             if (jResult.status == "success") {
                 initBet();
-                showAlertBox(1, "구매하셧습니다!", 500);
+                showAlertBox(1, "구매하셧습니다!", 250);
                 setRoundResult(getLastCompletedRoundKey(), "after_bet_success");
                 requestRecentBetList("after_bet_success");
                 setTimeout(function() { requestAmountInfo(); }, 500);
 
                 if (parseInt(m_objUser.mb_state_print, 10) === 1) {
-                    setTimeout(function() { requestSavePDF(jResult.data); }, 800);
+                    requestSavePDF(jResult.data);
                 }
 
 
@@ -2729,6 +2729,7 @@ function getBixolonWebDriverCheckStatusUrl() {
  * - urlencoded만 쓰고 필드명만 바꿀 때: `?bixolon_field=실제키` 또는 `localStorage.setItem("LION_BIXOLON_FORM_FIELD","실제키")`
  * - WebDriver **400** + Header는 urlencoded인데 기성과 맞추려면: `?bixolon_post=sdk_urlencoded` (본문 JSON만, 빅솔론 Web Print SDK `bxlcommon.js`와 동일)
  * **HTTPS** 페이지에서 WebDriver가 교차 출처이고 `LION_BIXOLON_POST_MODE`를 따로 안 썼으면, 기본 본문을 위와 같이 자동 적용(`data=` 생략). 예전 방식은 `?bixolon_post=form_data`.
+ * **프린터 속도**: 기본은 `checkStatus` 생략. 상태까지 보려면 `?bixolon_check=1` 또는 `window.LION_BIXOLON_SKIP_CHECK_STATUS = false`.
  */
 (function lionApplyBixolonUrlStorageOverrides() {
     try {
@@ -2754,6 +2755,10 @@ function getBixolonWebDriverCheckStatusUrl() {
                 var lsf = localStorage.getItem("LION_BIXOLON_FORM_FIELD");
                 if (lsf && lsf.length > 0) window.LION_BIXOLON_FORM_FIELD = lsf;
             }
+        }
+        var chk = pick("bixolon_check");
+        if (chk === "1" || chk.toLowerCase() === "true" || chk.toLowerCase() === "yes") {
+            window.LION_BIXOLON_SKIP_CHECK_STATUS = false;
         }
     } catch (e) { /* ignore */ }
 })();
@@ -3194,6 +3199,7 @@ function postBixolonWebDriverCheckStatus(requestId, responseId, onDone) {
 
 /**
  * BIXOLON WebDriver.exe(기본 8080)로 영수증 출력 후, 응답에 ResponseID가 있으면 checkStatus.bxl로 프린터 상태를 받는다.
+ * `window.LION_BIXOLON_SKIP_CHECK_STATUS === false` 일 때만 checkStatus 호출(기본은 생략·한 번의 왕복 절약으로 배팅 연속 체감 속도 개선).
  * HTTPS 페이지에서는 http://127.0.0.1 로의 XHR이 차단될 수 있어, 클라이언트는 HTTP 접속을 권장한다.
  * @param {function(?string, *, Object=):void} onDone (err, res, extra) — extra.skippedCheckStatus: ResponseID 없이 프린트 응답만 사용한 경우 true
  */
@@ -3242,11 +3248,14 @@ function postBixolonWebDriverPrint(payload, onDone) {
             });
             var rspId = res && (res.ResponseID != null ? res.ResponseID : res.responseId);
             var reqId = res && (res.RequestID != null ? res.RequestID : res.requestId);
-            if (rspId != null && String(rspId).length > 0) {
+            var doCheckStatus = window.LION_BIXOLON_SKIP_CHECK_STATUS === false;
+            if (doCheckStatus && rspId != null && String(rspId).length > 0) {
                 var rid = reqId != null && reqId !== "" ? reqId : (payload && payload.id != null ? payload.id : 1);
                 postBixolonWebDriverCheckStatus(rid, rspId, function(err2, stRes) {
                     if (onDone) onDone(err2, stRes, { skippedCheckStatus: false });
                 });
+            } else if (!doCheckStatus && rspId != null && String(rspId).length > 0) {
+                if (onDone) onDone(null, res, { skippedCheckStatus: true });
             } else {
                 logReceiptPrintDebug({
                     phase: "bixolon_print_response_no_responseId",
@@ -3326,12 +3335,6 @@ function saveToPDF(objBetInfo) {
         print_url: wdUrl + " (BIXOLON WebDriver POST)"
     };
     logReceiptPrintDebug({ phase: "receiptlog_summary", bet_fid: logPayload.bet_fid, game: logPayload.game, print_url_snip: (wdUrl + "").substring(0, 80) });
-    $.ajax({
-        type: "POST",
-        dataType: "json",
-        data: { json_: JSON.stringify(logPayload) },
-        url: "/api/receiptlog" + location.search
-    });
 
     var payload = buildBixolonReceiptWebDriverPayload(objBetInfo);
     postBixolonWebDriverPrint(payload, function(err, res, extra) {
@@ -3358,7 +3361,17 @@ function saveToPDF(objBetInfo) {
             showAlertBox(0, failMsg, 4200);
             return;
         }
-        showAlertBox(ui.alertType, ui.msg, ui.ms);
+        if (!ui) return;
+        if (ui.alertType === 0) {
+            showAlertBox(0, ui.msg, ui.ms);
+        }
+    });
+
+    $.ajax({
+        type: "POST",
+        dataType: "json",
+        data: { json_: JSON.stringify(logPayload) },
+        url: "/api/receiptlog" + location.search
     });
 }
 
