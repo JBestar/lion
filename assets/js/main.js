@@ -2727,6 +2727,7 @@ function getBixolonWebDriverCheckStatusUrl() {
  * - 주소에 `?bixolon_post=application_json` 붙이고 새로고침 후 영수증 출력
  * - `application/json`이 `status:0`(CORS)이면: `?bixolon_post=text_plain` 또는 `localStorage.setItem("LION_BIXOLON_POST_MODE","text_plain")`
  * - urlencoded만 쓰고 필드명만 바꿀 때: `?bixolon_field=실제키` 또는 `localStorage.setItem("LION_BIXOLON_FORM_FIELD","실제키")`
+ * - WebDriver **400** + Header는 urlencoded인데 기성과 맞추려면: `?bixolon_post=sdk_urlencoded` (본문 JSON만, 빅솔론 Web Print SDK `bxlcommon.js`와 동일)
  */
 (function lionApplyBixolonUrlStorageOverrides() {
     try {
@@ -2760,6 +2761,7 @@ function getBixolonWebDriverCheckStatusUrl() {
  * 기성(sn-cc.cc 등) Network **Headers**에 `Content-Type: application/x-www-form-urlencoded`로 찍히는 경우가 많음.
  * Payload에 JSON만 크게 보이는 것은 **한 개 폼 필드의 값**(URL 디코딩된 모습)인 경우가 많다. 키 이름은 Payload에서 "View source" / 파싱 전환으로 확인하거나, `curl`/프록시로 raw 본문을 본다.
  * 기본: `필드명=encodeURIComponent(JSON.stringify(obj))`, 필드명 기본 `data`, `window.LION_BIXOLON_FORM_FIELD`로 덮어쓰기.
+ * **`sdk_urlencoded`**: `Content-Type: application/x-www-form-urlencoded` 이지만 **본문은 `data=` 없이 JSON 문자열 그대로**(빅솔론 Web Print SDK `bxlcommon.js` `requestPrint`와 동일). 기성(sn-cc.cc)이 200·Lion만 400일 때 우선 시험.
  * `lion.com`→`127.0.0.1`에서 `application/json`이 CORS(`status:0`)면 **`text_plain`**: 본문은 JSON 문자열, `Content-Type: text/plain`(단순 요청·프리플라이트 회피).
  * 본문을 MIME `application/json`으로 보낼 때: `application_json` 또는 `json`.
  */
@@ -2808,6 +2810,13 @@ function bixolonWebDriverPostBodyOptions(jsonObj) {
         };
         if (downgradeFromJson) plain._corsDowngradeFromJson = true;
         return plain;
+    }
+    if (mode === "sdk_urlencoded" || mode === "bxlcommon" || mode === "bixolon_sdk") {
+        return {
+            data: JSON.stringify(jsonObj),
+            contentType: "application/x-www-form-urlencoded",
+            processData: false
+        };
     }
     return {
         data: bixolonWebDriverUrlEncodedBody(jsonObj),
@@ -2891,7 +2900,8 @@ function bixolonDiagnoseAjaxFailure(xhr) {
     }
     if (httpStatus === 0 && host && host !== "127.0.0.1" && host !== "localhost") {
         out.likely_cors = true;
-        out.hint = "cross_origin_to_127.0.0.1_typically_cors";
+        out.likely_public_page_to_client_loopback = true;
+        out.hint = "public_web_origin_to_127.0.0.1_chrome_cors_or_private_network_access";
         return out;
     }
     if (httpStatus === 0) {
@@ -2916,10 +2926,10 @@ function bixolonReceiptAjaxFailUserMessage(xhr) {
         return base + " HTTPS 사이트에서는 브라우저가 http://127.0.0.1:8080 접속을 막을 수 있습니다.";
     }
     if (d.likely_cors) {
-        return base + " 접속 주소와 WebDriver(127.0.0.1)가 달라 CORS로 실패한 경우가 많습니다. `application/json`은 OPTIONS 프리플라이트로 `status:0`이 나기 쉽습니다. 주소에 `?bixolon_post=text_plain`을 붙여 재시도하거나, WebDriver CORS 설정·동일 출처 프록시를 확인해 주세요.";
+        return base + " 인터넷 도메인(예: lion-88.com)으로 연 페이지에서 PC 안의 WebDriver(127.0.0.1:8080)로 보내는 요청은 브라우저가 막는 경우가 많습니다(status 0). 로컬에서 lion.com:82 등으로는 됐어도 실도메인으로 접속하면 달라질 수 있습니다. PHP를 서버에 올린 것과는 별개이며, 매장 PC에서 hosts로 사이트를 127.0.0.1에 붙이거나 WebDriver의 CORS·Private Network 응답을 맞추는 식으로 처리해야 합니다. `?bixolon_post=text_plain`도 같이 시도해 보세요.";
     }
     if (httpStatus === 400) {
-        return base + " 서버가 요청 본문을 거절했습니다(HTTP 400). 기본은 x-www-form-urlencoded(`data=` 등)입니다. 기성 Network의 필드명에 맞춰 `LION_BIXOLON_FORM_FIELD`를 쓰거나, `LION_BIXOLON_POST_MODE`로 `text_plain`·`application_json`을 시도해 보세요.";
+        return base + " 서버가 요청 본문을 거절했습니다(HTTP 400). 기본은 `data=`+JSON(urlencoded)입니다. 기성(sn-cc.cc)처럼 **본문이 JSON만**인 경우가 많으므로 주소에 `?bixolon_post=sdk_urlencoded`를 붙여 보거나, `text_plain`·`LION_BIXOLON_FORM_FIELD`로 필드명을 맞춰 보세요.";
     }
     return base + " WebDriver.exe 실행, 포트 8080, 방화벽을 확인해 주세요.";
 }
