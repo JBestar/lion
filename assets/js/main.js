@@ -951,7 +951,8 @@ function requestRecentBetList(reason) {
 }
 
 function fillSeniorBetListTable(arrBetData) {
-    var ROW_SEP = '<tr class="senior-bet-date-sep"><td colspan="5" style="height:4px;padding:0;line-height:0;background:#d62929;border:0;"></td></tr>';
+    var DATE_ROW_SEP = '<tr class="senior-bet-date-sep"><td colspan="5"></td></tr>';
+    var ROW_ROW_SEP = '<tr class="senior-bet-row-sep"><td colspan="5"></td></tr>';
     var tHtml = "";
     var raw = arrBetData != null ? arrBetData : [];
     var rows = m_betListWinsOnly ? raw.filter(function(el) { return isSeniorBetWinHit(el); }) : raw;
@@ -961,7 +962,10 @@ function fillSeniorBetListTable(arrBetData) {
         for (var i = 0; i < rows.length; i++) {
             var element = rows[i];
             var dateKey = getBetDateKeyForListSep(element);
-            if (i > 0 && dateKey !== prevDateKey) tHtml += ROW_SEP;
+            if (i > 0) {
+                if (dateKey !== prevDateKey) tHtml += DATE_ROW_SEP;
+                else tHtml += ROW_ROW_SEP;
+            }
             prevDateKey = dateKey;
 
             var betLabel = getBetListLabelSenior(element);
@@ -974,26 +978,25 @@ function fillSeniorBetListTable(arrBetData) {
             var betState = parseInt(element.bet_state, 10);
             if (isNaN(betState)) betState = 0;
             var showCancel = !!(m_btnBet && !m_btnBet.disabled && sameGame && element.bet_round_no == m_objRound.round_no);
-            var waitStyle = "<b><font color=\"#e6a23c\">대기</font></b>";
             if (showCancel)
                 lastCol = "<span class='calcel-btn' onclick='cancelBet(" + element.bet_fid + ", this);'>취소</span>";
             else if (betState === PB_BET_WAIT)
-                lastCol = waitStyle;
+                lastCol = "<span class=\"senior-bet-status-badge senior-bet-status-wait\">대 기</span>";
             else if (betState === PB_BET_CANCEL)
                 lastCol = "<b><font color=\"#909399\">취소</font></b>";
             else if (winMoney > 0 || betState === PB_BET_WIN)
-                lastCol = "<b><font color=\"green\">적중</font></b>";
+                lastCol = "<span class=\"senior-bet-status-badge senior-bet-status-win\">적 중</span>";
             else
-                lastCol = "<b><font color=\"red\">미적중</font></b>";
+                lastCol = "<span class=\"senior-bet-status-badge senior-bet-status-lose\">미적중</span>";
 
             var voUrl = vieworderUrlForBetRow(element);
             var stripeCls = (i % 2 === 0) ? "senior-bet-list-stripe-a" : "senior-bet-list-stripe-b";
             tHtml += "<tr class=\"senior-bet-list-row " + stripeCls + "\" style=\"height:45px;\">";
-            tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\"><a href=\"#\" onclick=\"openMemWin(" + JSON.stringify(voUrl) + ",1200,850);return false;\">" + formatRoundDisplay(roundFid, roundNo, '회') + "</a></td>";
-            tHtml += "<td style=\"width:34%;border-bottom:1px solid #515668;\"><span class=\"left\" style=\"padding-left:10px;\">" + betLabel + "</span></td>";
-            tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\">" + betMoney.toLocaleString() + "</td>";
-            tHtml += "<td align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\">" + winMoney.toLocaleString() + "</td>";
-            tHtml += "<td align=\"center\" style=\"width:12%;border-bottom:1px solid #515668;\">" + lastCol + "</td>";
+            tHtml += "<td class=\"senior-bet-col-round\" align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\"><a href=\"#\" onclick=\"openMemWin(" + JSON.stringify(voUrl) + ",1200,850);return false;\">" + formatRoundDisplay(roundFid, roundNo, '회') + "</a></td>";
+            tHtml += "<td class=\"senior-bet-col-pick\" align=\"center\" style=\"width:34%;border-bottom:1px solid #515668;\">" + betLabel + "</td>";
+            tHtml += "<td class=\"senior-bet-col-money\" align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\">" + betMoney.toLocaleString() + "</td>";
+            tHtml += "<td class=\"senior-bet-col-win\" align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\">" + winMoney.toLocaleString() + "</td>";
+            tHtml += "<td class=\"senior-bet-col-result\" align=\"center\" style=\"width:12%;border-bottom:1px solid #515668;\">" + lastCol + "</td>";
             tHtml += "</tr>";
         }
     }

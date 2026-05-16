@@ -130,7 +130,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                             <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:34%">선택</td>
                                             <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:18%">배팅금</td>
                                             <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:18%">당첨금</td>
-                                            <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:center; width:12%">결과</td>
+                                            <td style="height:35px; background:#28303f; border-bottom:1px solid #515668; font-size:14px; text-align:left; width:12%">결과</td>
                                         </tr>
                                         <tr>
                                             <td colspan="5">

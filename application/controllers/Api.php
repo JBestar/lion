@@ -55,6 +55,11 @@ class Api extends CI_Controller {
 				else if(!strcmp($objSess->sess_ip, $this->input->ip_address())) {
 					$bNeedLog = true;
 					$nLogId = $objSess->sess_fid;
+				} else if ((int) $objUser->mb_level === (int) MEMBER_EMPLOYEE_LEVEL) {
+					$this->sess_model->logoutByMbUid($objUser->mb_uid);
+					writeLog($logHead . "store duplicate login: replaced prior session uid=" . $objUser->mb_uid . " old_ip=" . $objSess->sess_ip . " new_ip=" . $this->input->ip_address());
+					$bNeedLog = true;
+					$nLogId = 0;
 				}
 				
 				if($bNeedLog && $nLogId == 0){

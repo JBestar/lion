@@ -66,6 +66,15 @@ class Sess_model extends CI_Model {
         return $this->db->delete($this->mTableName);
     }
 
+    /** 동일 계정의 기존 세션 전부 제거 (매장 중복 로그인 시 이전 PC 세션 무효화) */
+    public function logoutByMbUid($strUid){
+        if ($strUid === null || $strUid === '') {
+            return false;
+        }
+        $this->db->where('sess_mb_uid', $strUid);
+        return $this->db->delete($this->mTableName);
+    }
+
       
     public function login($objUser, $sessId=""){
         if(is_null($objUser))

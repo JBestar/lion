@@ -300,10 +300,69 @@
     padding: 9px 15px !important;
 }
 
-/* 배팅리스트 행: 밝음 / 어둠 교대 */
+/* 배팅리스트 — 일자 구분선(굵음) */
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-date-sep td {
+    height: 4px !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    background: #d62929 !important;
+    border: 0 !important;
+}
+
+/* 배팅리스트 — 행 구분선(일자보다 얇음, 매 행 사이) */
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-row-sep td {
+    height: 2px !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    background: #e83838 !important;
+    border: 0 !important;
+}
+
+/* 배팅리스트 행: 밝음/어둠 배경 교대 */
 .senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-a td {
-    background-color: #3d4658 !important;
+    background-color: #9798be !important;
+    border-bottom-color: #565964 !important;
 }
 .senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-b td {
-    background-color: #262c38 !important;
+    background-color: #262966 !important;
+    border-bottom-color: #454d5e !important;
+}
+
+/* 회차·선택·배팅금·당첨금 — 행마다 동일 글자색 (결과 열 제외) */
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-a td:not(.senior-bet-col-result),
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-a td:not(.senior-bet-col-result) a {
+    color: #1e2633 !important;
+}
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-b td:not(.senior-bet-col-result),
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-b td:not(.senior-bet-col-result) a {
+    color: #eef2f8 !important;
+}
+
+/* 데이터 행 — 가운데 정렬 */
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row td {
+    text-align: center !important;
+}
+
+/* 결과 열 — 대기·적중·미적중 뱃지 (취소 버튼과 동일 형태) */
+.senior-bet-list-head .senior-bet-status-badge {
+    display: inline-block;
+    padding: 5px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #fff !important;
+    border: none;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    user-select: none;
+    vertical-align: middle;
+}
+.senior-bet-list-head .senior-bet-status-wait {
+    background: #e6a23c !important;
+}
+.senior-bet-list-head .senior-bet-status-win {
+    background: #2db55d !important;
+}
+.senior-bet-list-head .senior-bet-status-lose {
+    background: #d62929 !important;
 }
