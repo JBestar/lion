@@ -300,8 +300,8 @@
     padding: 9px 15px !important;
 }
 
-/* 배팅리스트 — 일자 구분선(굵음) */
-.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-date-sep td {
+/* 배팅리스트 — 회차 구분선 */
+.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-round-sep td {
     height: 4px !important;
     padding: 0 !important;
     line-height: 0 !important;
@@ -309,18 +309,9 @@
     border: 0 !important;
 }
 
-/* 배팅리스트 — 행 구분선(일자보다 얇음, 매 행 사이) */
-.senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-row-sep td {
-    height: 2px !important;
-    padding: 0 !important;
-    line-height: 0 !important;
-    background: #e83838 !important;
-    border: 0 !important;
-}
-
 /* 배팅리스트 행: 밝음/어둠 배경 교대 */
 .senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-a td {
-    background-color: #9798be !important;
+    background-color: #9d9da9 !important;
     border-bottom-color: #565964 !important;
 }
 .senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-b td {

@@ -849,23 +849,14 @@ function isSeniorBetWinHit(element) {
     return false;
 }
 
-/** 배팅리스트 빨간 구분선: 회차일(bet_round_date) 우선, 없으면 bet_time의 날짜 */
-function getBetDateKeyForListSep(element) {
+/** 배팅리스트 회차 구분선: 게임 + 회차 fid(없으면 round_no) */
+function getBetRoundKeyForListSep(element) {
     if (!element) return "";
-    var rd = element.bet_round_date;
-    if (rd != null && String(rd).length > 0) {
-        var sm = String(rd).trim().match(/^(\d{4}-\d{2}-\d{2})/);
-        if (sm) return sm[1];
-    }
-    var betTime = element.bet_time;
-    if (betTime == null || betTime === "") return "";
-    var s = String(betTime).trim();
-    var m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (m) return m[1];
-    var d = new Date(s);
-    if (isNaN(d.getTime())) return "";
-    var pad2 = function(n) { return (n < 10 ? "0" : "") + n; };
-    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+    var gid = element.bet_game != null ? String(element.bet_game) : "";
+    var fid = element.bet_round_fid != null ? String(element.bet_round_fid) : "";
+    if (fid !== "") return gid + ":" + fid;
+    var no = element.bet_round_no != null ? String(element.bet_round_no) : "";
+    return gid + ":no:" + no;
 }
 
 /** 시니어 패널 각 카드 하단 노란 숫자: 현재 회차(bet_round_fid)에 해당 bet_mode로 배팅한 누적 금액 */
@@ -951,22 +942,18 @@ function requestRecentBetList(reason) {
 }
 
 function fillSeniorBetListTable(arrBetData) {
-    var DATE_ROW_SEP = '<tr class="senior-bet-date-sep"><td colspan="5"></td></tr>';
-    var ROW_ROW_SEP = '<tr class="senior-bet-row-sep"><td colspan="5"></td></tr>';
+    var ROUND_ROW_SEP = '<tr class="senior-bet-round-sep"><td colspan="5"></td></tr>';
     var tHtml = "";
     var raw = arrBetData != null ? arrBetData : [];
     var rows = m_betListWinsOnly ? raw.filter(function(el) { return isSeniorBetWinHit(el); }) : raw;
     if (rows.length > 0) {
-        var prevDateKey = null;
+        var prevRoundKey = null;
         var gid = getGameId();
         for (var i = 0; i < rows.length; i++) {
             var element = rows[i];
-            var dateKey = getBetDateKeyForListSep(element);
-            if (i > 0) {
-                if (dateKey !== prevDateKey) tHtml += DATE_ROW_SEP;
-                else tHtml += ROW_ROW_SEP;
-            }
-            prevDateKey = dateKey;
+            var roundKey = getBetRoundKeyForListSep(element);
+            if (i > 0 && roundKey !== prevRoundKey) tHtml += ROUND_ROW_SEP;
+            prevRoundKey = roundKey;
 
             var betLabel = getBetListLabelSenior(element);
             var winMoney = parseInt(element.bet_win_money, 10) || 0;
