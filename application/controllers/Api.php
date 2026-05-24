@@ -138,6 +138,16 @@ class Api extends CI_Controller {
 		}
 	}
 
+	/** 세션 유지(heartbeat) — is_login()으로 sess_update_time 갱신 */
+	public function heartbeat(){
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)){
+			echo json_encode(array('status' => 'success'));
+		} else {
+			echo json_encode(array('status' => 'logout'));
+		}
+	}
+
 	//사용자정보
 	public function session(){ 
 	

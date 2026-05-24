@@ -28,6 +28,9 @@ var PB_BET_CANCEL = 4;
 var m_pbRecentBetsPollTimer = null;
 /** 당첨내역 메뉴: 좌측 배팅리스트에 적중(결과 확정) 행만 표시 */
 var m_betListWinsOnly = false;
+/** sess_list 유지 heartbeat (60초) */
+var m_sessHeartbeatTimer = null;
+var SESS_HEARTBEAT_MS = 60000;
 
 $(document).ready(function() {
 
@@ -45,6 +48,7 @@ $(document).ready(function() {
     selectGame(0);
 
     requestMemberInfo();
+    startSessionHeartbeat();
     requestConfig();
     requestCurrentRound();
     requestRecvMessage();
@@ -1295,6 +1299,39 @@ function requestSavePDF(iBetId) {
             }
         },
         error: function(request, status, error) {
+        }
+    });
+}
+
+function hasSessionLogId() {
+    return /(?:\?|&)l=/.test(location.search || "");
+}
+
+function startSessionHeartbeat() {
+    if (!hasSessionLogId()) return;
+    stopSessionHeartbeat();
+    requestSessionHeartbeat();
+    m_sessHeartbeatTimer = setInterval(requestSessionHeartbeat, SESS_HEARTBEAT_MS);
+}
+
+function stopSessionHeartbeat() {
+    if (m_sessHeartbeatTimer) {
+        clearInterval(m_sessHeartbeatTimer);
+        m_sessHeartbeatTimer = null;
+    }
+}
+
+function requestSessionHeartbeat() {
+    if (!hasSessionLogId()) return;
+    $.ajax({
+        type: "POST",
+        dataType: "json",
+        url: "/api/heartbeat" + location.search,
+        success: function(jResult) {
+            if (jResult.status === "logout") {
+                stopSessionHeartbeat();
+                location.reload();
+            }
         }
     });
 }

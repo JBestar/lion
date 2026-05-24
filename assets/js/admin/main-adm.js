@@ -3,7 +3,7 @@ var m_arrEmployee = null;
 $(document).ready(function(){
    
     requestEmployee();
-    setInterval(requestEmployee, 30000);
+    setInterval(requestEmployee, 10000);
     
 });
 
@@ -218,6 +218,13 @@ function requestEmployee(){
 
 
 
+function formatAgencyUidCell(item) {
+    var uid = item.mb_uid;
+    if (parseInt(item.mb_agency_online, 10) === 1)
+        return "<span class=\"employee-mgmt-online-uid\">" + uid + "</span>";
+    return uid;
+}
+
 function showEmployeeData(arrEmployee){
 
     m_arrEmployee = arrEmployee;
@@ -233,8 +240,8 @@ function showEmployeeData(arrEmployee){
             tHtml1 += " <tr class=\"el-table__row\">";
             tHtml2 += " <tr class=\"el-table__row\">";
             tHtml1 += tTd1;         tHtml2 += tTd2;
-            tHtml1 += arrEmployee[idx].mb_uid;
-            tHtml2 += arrEmployee[idx].mb_uid;
+            tHtml1 += formatAgencyUidCell(arrEmployee[idx]);
+            tHtml2 += formatAgencyUidCell(arrEmployee[idx]);
             tHtml1 += "</div></td>"; tHtml2 += "</div></td>";
 
             tHtml1 += tTd1;         tHtml2 += tTd2;

@@ -186,4 +186,5 @@
 
 
 <script src="<?php echo base_url('assets/js/admin/main-adm.js'); ?>"></script>
+<link rel="stylesheet" href="<?php echo base_url('assets/css/employee-mgmt.css?v=3'); ?>">
 

@@ -67,6 +67,27 @@ class Admin extends CI_Controller {
 		}
 	}
 
+    public function store()
+	{
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
+		{
+			$arrData = getSidebarArray();
+			$arrData['menuitem_12'] = " is-active ";
+
+			$this->load->model('confsite_model');
+			$arrData['site_name'] = $this->confsite_model->getSiteName();
+			$this->attachTopAdminFlag($arrData, $nLogId);
+
+			$this->load->view('admin/header_adm', $arrData);
+			$this->load->view('admin/store_adm');
+			$this->load->view('admin/footer_adm');
+		}
+		else {
+			redirect( base_url().'admin/login');
+		}
+	}
+
     public function roundstat()
 	{
 		$nLogId = trim($this->input->get('l'));		

@@ -1,9 +1,12 @@
     var worker; 
     var m_objUser = null;
+    var m_sessHeartbeatTimer = null;
+    var SESS_HEARTBEAT_MS = 60000;
 
     $(document).ready(function(){
 
         requestMemberInfo();
+        startSessionHeartbeat();
         requestWaitTransfer();
         addEventListner();
         startWorker();
@@ -12,6 +15,8 @@
     function clickMenu(iMenu){
         if(iMenu == 1){
             location.href = "/admin"+location.search;
+        } else if(iMenu == 13){
+            location.href = "/admin/store"+location.search;
         } else if(iMenu == 2){
             location.href = "/admin/statist"+location.search;
         } else if(iMenu == 3){
@@ -232,6 +237,39 @@
         $("#el-dialog-pbg-drawkey-id").val(objInfo.draw_sync_key != null ? objInfo.draw_sync_key : "");
     }
 
+
+    function hasSessionLogId() {
+        return /(?:\?|&)l=/.test(location.search || "");
+    }
+
+    function startSessionHeartbeat() {
+        if (!hasSessionLogId()) return;
+        stopSessionHeartbeat();
+        requestSessionHeartbeat();
+        m_sessHeartbeatTimer = setInterval(requestSessionHeartbeat, SESS_HEARTBEAT_MS);
+    }
+
+    function stopSessionHeartbeat() {
+        if (m_sessHeartbeatTimer) {
+            clearInterval(m_sessHeartbeatTimer);
+            m_sessHeartbeatTimer = null;
+        }
+    }
+
+    function requestSessionHeartbeat() {
+        if (!hasSessionLogId()) return;
+        $.ajax({
+            type: "POST",
+            dataType: "json",
+            url: "/capi/heartbeat" + location.search,
+            success: function(jResult) {
+                if (jResult.status === "logout") {
+                    stopSessionHeartbeat();
+                    location.reload();
+                }
+            }
+        });
+    }
 
     function requestMemberInfo() {
 

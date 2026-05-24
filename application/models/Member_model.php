@@ -117,6 +117,61 @@ class Member_model extends CI_Model {
         return $this->db->get($this->mTableName)->result();
     }
 
+    function getAllStores(){
+        $this->db->select('member.mb_fid');
+        $this->db->select('member.mb_uid');
+        $this->db->select('member.mb_pwd');
+        $this->db->select('member.mb_level');
+        $this->db->select('member.mb_emp_fid');
+        $this->db->select('member.mb_nickname');
+        $this->db->select('member.mb_money');
+        $this->db->select('member.mb_point');
+        $this->db->select('member.mb_time_join');
+        $this->db->select('member.mb_time_last');
+        $this->db->select('member.mb_game_pb_ratio');
+        $this->db->select('member.mb_state_active');
+        $this->db->select('member.mb_state_delete');
+        $this->db->select('member.mb_limit_round');
+        $this->db->select('member.mb_limit_single');
+        $this->db->select('member.mb_limit_mix');
+        $this->db->select('member.mb_state_print');
+        $this->db->select('agency.mb_uid AS mb_emp_uid', false);
+        $this->db->from($this->mTableName.' AS member');
+        $this->db->join($this->mTableName.' AS agency', 'agency.mb_fid = member.mb_emp_fid', 'left');
+        $this->db->where('member.mb_level', MEMBER_EMPLOYEE_LEVEL);
+        $this->db->where('member.mb_state_delete', 0);
+        return $this->db->get()->result();
+    }
+
+    /** 접속 중 매장 상단 + 로그인날짜 최신순 정렬 */
+    function applyStoreOnlineAndSort($arrStores, $arrActiveMbFids){
+
+        if(!is_array($arrStores) || count($arrStores) < 1)
+            return $arrStores;
+
+        $activeSet = array();
+        if(is_array($arrActiveMbFids)){
+            foreach($arrActiveMbFids as $nFid)
+                $activeSet[(int)$nFid] = true;
+        }
+
+        foreach($arrStores as $obj){
+            $obj->mb_store_online = isset($activeSet[(int)$obj->mb_fid]) ? 1 : 0;
+        }
+
+        usort($arrStores, function($a, $b){
+            $oa = isset($a->mb_store_online) ? (int)$a->mb_store_online : 0;
+            $ob = isset($b->mb_store_online) ? (int)$b->mb_store_online : 0;
+            if($oa !== $ob)
+                return $ob - $oa;
+            $ta = ($a->mb_time_last != null) ? $a->mb_time_last : '';
+            $tb = ($b->mb_time_last != null) ? $b->mb_time_last : '';
+            return strcmp($tb, $ta);
+        });
+
+        return $arrStores;
+    }
+
     function addEmployee($objAdmin, $arrReqData){
         
         //1:성공, 2:중복아이디, 3:수수료오유, 
@@ -200,8 +255,16 @@ class Member_model extends CI_Model {
         if(strlen($arrReqData['limix']) < 1)
             $arrReqData['limix'] = 0; 
 
-        if($objEmployee->mb_level < MEMBER_AGENCY_LEVEL && $objAdmin->mb_game_pb_ratio < $arrReqData['ratio'])
-            return 3;
+        if($objEmployee->mb_level < MEMBER_AGENCY_LEVEL) {
+            $nMaxRatio = $objAdmin->mb_game_pb_ratio;
+            if((int)$objAdmin->mb_level >= (int)MEMBER_COMPANY_LEVEL) {
+                $objAgency = $this->getInfoByFid($objEmployee->mb_emp_fid);
+                if(!is_null($objAgency))
+                    $nMaxRatio = $objAgency->mb_game_pb_ratio;
+            }
+            if($nMaxRatio < $arrReqData['ratio'])
+                return 3;
+        }
         
         $this->db->set('mb_pwd', $arrReqData['pwd']);
         $this->db->set('mb_nickname', $arrReqData['nickname']);
@@ -239,6 +302,9 @@ class Member_model extends CI_Model {
         $del_uid = $objEmployee->mb_uid;
 
         if($objEmployee->mb_level != $arrReqData['level'])
+            return 0;
+
+        if($objEmployee->mb_level == MEMBER_EMPLOYEE_LEVEL && (int)$objAdmin->mb_level <= (int)MEMBER_AGENCY_LEVEL)
             return 0;
 
         $CI =& get_instance();

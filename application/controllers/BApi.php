@@ -147,6 +147,16 @@ class BApi extends CI_Controller {
 		}
 	}
 
+	/** 세션 유지(heartbeat) */
+	public function heartbeat(){
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_AGENCY_LEVEL)){
+			echo json_encode(array('status' => 'success'));
+		} else {
+			echo json_encode(array('status' => 'logout'));
+		}
+	}
+
 	//사용자정보
 	public function session(){ 
 	
@@ -395,11 +405,14 @@ class BApi extends CI_Controller {
 			
 			//model
 			$this->load->model('member_model');
+			$this->load->model('sess_model');
 
 			$strUid = $this->sess_model->getUserId($nLogId);		
 			$objUser = $this->member_model->getInfoByUid($strUid);
 			
 			$arrEmployee = $this->member_model->getEmployee($objUser, MEMBER_EMPLOYEE_LEVEL);
+			$arrActive = $this->sess_model->getActiveEmployeeMbFids($objUser->mb_fid);
+			$arrEmployee = $this->member_model->applyStoreOnlineAndSort($arrEmployee, $arrActive);
 			
 			$arrResult['data'] = $arrEmployee;
 	 		$arrResult['status'] = "success";				
@@ -486,27 +499,8 @@ class BApi extends CI_Controller {
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() &&  $this->sess_model->is_login($nLogId, MEMBER_AGENCY_LEVEL))
 		{
-			
-			//model
-			$this->load->model('member_model');
-			$this->load->model('delhist_model');
-
-			$strUid = $this->sess_model->getUserId($nLogId);		
-			$objUser = $this->member_model->getInfoByUid($strUid);
-			$arrReqData['level'] = MEMBER_EMPLOYEE_LEVEL;
-			$del_uid = "";
-			$iResult = $this->member_model->deleteEmployee($objUser, $arrReqData, $del_uid);
-			
-			if($iResult == 1){
-				$this->delhist_model->register($strUid, $del_uid);
-				$arrResult['status'] = "success";
-			}
-				
-			else {
-				$arrResult['status'] = "fail";
-				$arrResult['data'] = $iResult;
-			}			
-			
+			$arrResult['status'] = "fail";
+			$arrResult['data'] = 0;
 			echo json_encode($arrResult);
 		}
 		else {

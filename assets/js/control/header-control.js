@@ -1,9 +1,12 @@
     var worker;
     var m_objUser = null;
+    var m_sessHeartbeatTimer = null;
+    var SESS_HEARTBEAT_MS = 60000;
 
     $(document).ready(function() {
 
         requestMemberInfo();
+        startSessionHeartbeat();
         requestRecvMessage();
         requestWaitTransfer();
         addEventListner();
@@ -154,6 +157,39 @@
         }
 
 
+    }
+
+    function hasSessionLogId() {
+        return /(?:\?|&)l=/.test(location.search || "");
+    }
+
+    function startSessionHeartbeat() {
+        if (!hasSessionLogId()) return;
+        stopSessionHeartbeat();
+        requestSessionHeartbeat();
+        m_sessHeartbeatTimer = setInterval(requestSessionHeartbeat, SESS_HEARTBEAT_MS);
+    }
+
+    function stopSessionHeartbeat() {
+        if (m_sessHeartbeatTimer) {
+            clearInterval(m_sessHeartbeatTimer);
+            m_sessHeartbeatTimer = null;
+        }
+    }
+
+    function requestSessionHeartbeat() {
+        if (!hasSessionLogId()) return;
+        $.ajax({
+            type: "POST",
+            dataType: "json",
+            url: "/bapi/heartbeat" + location.search,
+            success: function(jResult) {
+                if (jResult.status === "logout") {
+                    stopSessionHeartbeat();
+                    location.reload();
+                }
+            }
+        });
     }
 
     function requestMemberInfo() {

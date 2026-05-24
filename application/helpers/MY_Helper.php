@@ -31,7 +31,8 @@
                'menuitem_8' => '',
                'menuitem_9' => '',
                'menuitem_10' => '',
-               'menuitem_11' => ''
+               'menuitem_11' => '',
+               'menuitem_12' => ''
           );
 
     }

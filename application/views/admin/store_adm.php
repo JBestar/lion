@@ -9,17 +9,20 @@
         <div class="el-table employee-mgmt-table el-table--fit el-table--striped el-table--scrollable-x el-table--scrollable-y el-table--enable-row-transition el-table--small">
 
             <div class="el-table__body-wrapper is-scrolling-left">
-                <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 1200px;">
+                <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 1350px;">
                     <colgroup>
-                        <col name="el-table_15_column_109" width="90"><col name="el-table_15_column_110" width="90">
+                        <col name="el-table_15_column_108" width="90"><col name="el-table_15_column_109" width="90"><col name="el-table_15_column_110" width="90">
                         <col name="el-table_15_column_111" width="90"><col name="el-table_15_column_112" width="90">
                         <col name="el-table_15_column_113" width="90"><col name="el-table_15_column_114" width="90">
                         <col name="el-table_15_column_115" width="90"><col name="el-table_15_column_116" width="90">
                         <col name="el-table_15_column_117" width="90"><col name="el-table_15_column_118" width="150">
-                        <col name="el-table_15_column_119" width="150"><col name="el-table_15_column_120" width="90">
+                        <col name="el-table_15_column_119" width="150"><col name="el-table_15_column_120" width="150">
                     </colgroup>
                     <thead class="has-gutter">
                         <tr class="">
+                            <th colspan="1" rowspan="1" class="el-table_15_column_108     is-leaf">
+                                <div class="cell">총판아이디</div>
+                            </th>
                             <th colspan="1" rowspan="1" class="el-table_15_column_109     is-leaf">
                                 <div class="cell">매장아이디</div>
                             </th>
@@ -64,20 +67,23 @@
                     </tbody>
                 </table>
             </div>
-            <div class="el-table__fixed-right" style="width: 90px; height: 100%;">
+            <div class="el-table__fixed-right" style="width: 150px; height: 100%;">
                 
                 <div class="el-table__fixed-header-wrapper">
-                    <table cellspacing="0" cellpadding="0" border="0" class="el-table__header" style="width: 1200px;">
+                    <table cellspacing="0" cellpadding="0" border="0" class="el-table__header" style="width: 1350px;">
                         <colgroup>
-                            <col name="el-table_15_column_109" width="90"><col name="el-table_15_column_110" width="90">
+                            <col name="el-table_15_column_108" width="90"><col name="el-table_15_column_109" width="90"><col name="el-table_15_column_110" width="90">
                             <col name="el-table_15_column_111" width="90"><col name="el-table_15_column_112" width="90">
                             <col name="el-table_15_column_113" width="90"><col name="el-table_15_column_114" width="90">
                             <col name="el-table_15_column_115" width="90"><col name="el-table_15_column_116" width="90">
                             <col name="el-table_15_column_117" width="90"><col name="el-table_15_column_118" width="150">
-                            <col name="el-table_15_column_119" width="150"><col name="el-table_15_column_120" width="90">
+                            <col name="el-table_15_column_119" width="150"><col name="el-table_15_column_120" width="150">
                         </colgroup>
                         <thead class="">
                             <tr class="">
+                                <th colspan="1" rowspan="1" class="el-table_15_column_108     is-hidden is-leaf">
+                                    <div class="cell">총판아이디</div>
+                                </th>
                                 <th colspan="1" rowspan="1" class="el-table_15_column_109     is-hidden is-leaf">
                                     <div class="cell">매장아이디</div>
                                 </th><th colspan="1" rowspan="1" class="el-table_15_column_110     is-hidden is-leaf">
@@ -118,14 +124,14 @@
                 </div>
                 
                 <div class="el-table__fixed-body-wrapper" style="top: 39px;">
-                    <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 1200px;">
+                    <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 1350px;">
                         <colgroup>
-                            <col name="el-table_15_column_109" width="90"><col name="el-table_15_column_110" width="90">
+                            <col name="el-table_15_column_108" width="90"><col name="el-table_15_column_109" width="90"><col name="el-table_15_column_110" width="90">
                             <col name="el-table_15_column_111" width="90"><col name="el-table_15_column_112" width="90">
                             <col name="el-table_15_column_113" width="90"><col name="el-table_15_column_114" width="90">
                             <col name="el-table_15_column_115" width="90"><col name="el-table_15_column_116" width="90">
                             <col name="el-table_15_column_117" width="90"><col name="el-table_15_column_118" width="150">
-                            <col name="el-table_15_column_119" width="150"><col name="el-table_15_column_120" width="90">
+                            <col name="el-table_15_column_119" width="150"><col name="el-table_15_column_120" width="150">
                         </colgroup>
                         
                         <tbody  id="main-employee2-id">
@@ -149,6 +155,12 @@
                 </div>
                 <div class="el-dialog__body">
                     <form class="el-form" >
+                        <div class="el-form-item" id="el-dialog-employee-agency-row-id">
+                            <label class="el-form-item__label" style="width: 100px;">총판아이디</label>
+                            <div class="el-form-item__content" style="margin-left: 100px;">
+                                <select id="el-dialog-employee-agency-id" class="el-input__inner" style="width:100%;"></select>
+                            </div>
+                        </div>
                         <div class="el-form-item">
                             <label class="el-form-item__label" style="width: 100px;">매장아이디</label>
                             <div class="el-form-item__content" style="margin-left: 100px;">
@@ -236,4 +248,4 @@
 
 
 <link rel="stylesheet" href="<?php echo base_url('assets/css/employee-mgmt.css?v=3'); ?>">
-<script src="<?php echo base_url('assets/js/control/main-control.js'); ?>"></script>
+<script src="<?php echo base_url('assets/js/admin/store-adm.js?v=1'); ?>"></script>

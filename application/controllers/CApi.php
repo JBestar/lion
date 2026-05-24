@@ -137,6 +137,16 @@ class CApi extends CI_Controller {
 		}
 	}
 
+	/** 세션 유지(heartbeat) */
+	public function heartbeat(){
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL)){
+			echo json_encode(array('status' => 'success'));
+		} else {
+			echo json_encode(array('status' => 'logout'));
+		}
+	}
+
 	//사용자정보
 	public function session(){ 
 	
@@ -199,10 +209,13 @@ class CApi extends CI_Controller {
 			foreach($arrEmployee as $objAgency){
 				$arrAgencyFids[] = (int) $objAgency->mb_fid;
 			}
-			$arrActiveAgencyFids = $this->sess_model->getAgencyFidsWithActiveEmployeeSession($arrAgencyFids);
+			$arrActiveAgencyFids = $this->sess_model->getActiveAgencyMbFids();
 			$arrActiveSet = array_flip($arrActiveAgencyFids);
+			$arrSubstoreOnlineFids = $this->sess_model->getAgencyFidsWithActiveEmployeeSession($arrAgencyFids);
+			$arrSubstoreSet = array_flip($arrSubstoreOnlineFids);
 			foreach($arrEmployee as $objAgency){
-				$objAgency->mb_substore_online = isset($arrActiveSet[(int) $objAgency->mb_fid]) ? 1 : 0;
+				$objAgency->mb_agency_online = isset($arrActiveSet[(int) $objAgency->mb_fid]) ? 1 : 0;
+				$objAgency->mb_substore_online = isset($arrSubstoreSet[(int) $objAgency->mb_fid]) ? 1 : 0;
 			}
 			
 			$arrResult['data'] = $arrEmployee;
@@ -326,6 +339,123 @@ class CApi extends CI_Controller {
 		else {
 			$arrResult['status'] = "logout";
 			echo json_encode($arrResult);	
+		}
+	}
+
+
+	public function getstore(){
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
+		{
+			$this->load->model('member_model');
+			$this->load->model('sess_model');
+			$arrStore = $this->member_model->getAllStores();
+			$arrActive = $this->sess_model->getActiveEmployeeMbFids(null);
+			$arrStore = $this->member_model->applyStoreOnlineAndSort($arrStore, $arrActive);
+			$arrResult['data'] = $arrStore;
+			$arrResult['status'] = "success";
+			echo json_encode($arrResult);
+		}
+		else {
+			$arrResult['status'] = "logout";
+			echo json_encode($arrResult);
+		}
+	}
+
+
+	public function addstore(){
+		$jsonData = $_REQUEST['json_'];
+		$arrReqData = json_decode($jsonData, true);
+
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
+		{
+			$this->load->model('member_model');
+			$strUid = $this->sess_model->getUserId($nLogId);
+			$objUser = $this->member_model->getInfoByUid($strUid);
+			$iResult = 0;
+			if(!is_null($objUser)){
+				$objAgency = $this->member_model->getInfoByFid($arrReqData['emp_fid']);
+				if(!is_null($objAgency) && (int)$objAgency->mb_level === (int)MEMBER_AGENCY_LEVEL && (int)$objAgency->mb_state_delete !== 1){
+					$arrReqData['level'] = MEMBER_EMPLOYEE_LEVEL;
+					$iResult = $this->member_model->addEmployee($objAgency, $arrReqData);
+				}
+			}
+			if($iResult == 1)
+				$arrResult['status'] = "success";
+			else {
+				$arrResult['status'] = "fail";
+				$arrResult['data'] = $iResult;
+			}
+			echo json_encode($arrResult);
+		}
+		else {
+			$arrResult['status'] = "logout";
+			echo json_encode($arrResult);
+		}
+	}
+
+
+	public function modifystore(){
+		$jsonData = $_REQUEST['json_'];
+		$arrReqData = json_decode($jsonData, true);
+
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
+		{
+			$this->load->model('member_model');
+			$strUid = $this->sess_model->getUserId($nLogId);
+			$objUser = $this->member_model->getInfoByUid($strUid);
+			$iResult = 0;
+			if(!is_null($objUser)){
+				$arrReqData['level'] = MEMBER_EMPLOYEE_LEVEL;
+				$iResult = $this->member_model->modifyEmployee($objUser, $arrReqData);
+			}
+			if($iResult == 1)
+				$arrResult['status'] = "success";
+			else {
+				$arrResult['status'] = "fail";
+				$arrResult['data'] = $iResult;
+			}
+			echo json_encode($arrResult);
+		}
+		else {
+			$arrResult['status'] = "logout";
+			echo json_encode($arrResult);
+		}
+	}
+
+
+	public function deletestore(){
+		$jsonData = $_REQUEST['json_'];
+		$arrReqData = json_decode($jsonData, true);
+
+		$nLogId = trim($this->input->get('l'));
+		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_COMPANY_LEVEL))
+		{
+			$this->load->model('member_model');
+			$this->load->model('delhist_model');
+			$strUid = $this->sess_model->getUserId($nLogId);
+			$objUser = $this->member_model->getInfoByUid($strUid);
+			$iResult = 0;
+			$del_uid = "";
+			if(!is_null($objUser)){
+				$arrReqData['level'] = MEMBER_EMPLOYEE_LEVEL;
+				$iResult = $this->member_model->deleteEmployee($objUser, $arrReqData, $del_uid);
+			}
+			if($iResult == 1){
+				$this->delhist_model->register($strUid, $del_uid);
+				$arrResult['status'] = "success";
+			}
+			else {
+				$arrResult['status'] = "fail";
+				$arrResult['data'] = $iResult;
+			}
+			echo json_encode($arrResult);
+		}
+		else {
+			$arrResult['status'] = "logout";
+			echo json_encode($arrResult);
 		}
 	}
 

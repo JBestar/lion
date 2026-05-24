@@ -1,7 +1,9 @@
     var m_arrEmployee = null;
+    var m_arrAgency = null;
 
     $(document).ready(function() {
 
+        requestAgencyList();
         requestEmployee();
         setInterval(requestEmployee, 10000);
 
@@ -22,6 +24,34 @@
         $("#el-dialog-employee-uid").removeAttr("disabled");
         $("#el-dialog-employee-uid").attr("index", 0);
         $("#el-dialog-employee-uid-div").removeClass("is-disabled");
+        $("#el-dialog-employee-agency-id").prop("disabled", false);
+        setAgencyOptions("");
+    }
+
+    function setAgencyOptions(selectedFid) {
+        var tHtml = "<option value=\"\">총판 선택</option>";
+        if (m_arrAgency != null && m_arrAgency.length > 0) {
+            for (var i = 0; i < m_arrAgency.length; i++) {
+                var sel = (String(selectedFid) === String(m_arrAgency[i].mb_fid)) ? " selected" : "";
+                tHtml += "<option value=\"" + m_arrAgency[i].mb_fid + "\"" + sel + ">" + m_arrAgency[i].mb_uid + "</option>";
+            }
+        }
+        $("#el-dialog-employee-agency-id").html(tHtml);
+    }
+
+    function requestAgencyList() {
+        $.ajax({
+            type: "POST",
+            dataType: "json",
+            url: "/capi/emplist" + location.search,
+            success: function(jResult) {
+                if (jResult.status == "success") {
+                    m_arrAgency = jResult.data;
+                } else if (jResult.status == "logout") {
+                    location.reload();
+                }
+            }
+        });
     }
 
     function modifyEmpDlg(idx) {
@@ -40,6 +70,8 @@
 
         showEmpDlg();
 
+        setAgencyOptions(m_arrEmployee[idx].mb_emp_fid);
+        $("#el-dialog-employee-agency-id").prop("disabled", true);
         $("#el-dialog-employee-uid").val(m_arrEmployee[idx].mb_uid);
         $("#el-dialog-employee-uid").attr("disabled", true);
         $("#el-dialog-employee-uid").attr("index", m_arrEmployee[idx].mb_fid);
@@ -51,6 +83,48 @@
         $("#el-dialog-employee-lisingle").val(m_arrEmployee[idx].mb_limit_single);
         $("#el-dialog-employee-limix").val(m_arrEmployee[idx].mb_limit_mix);
         $("#el-dialog-employee-print").prop("checked", parseInt(m_arrEmployee[idx].mb_state_print, 10) === 1);
+    }
+
+    function deleteEmployee(idx) {
+        if (idx < 0 || m_arrEmployee == null || m_arrEmployee[idx] == null)
+            return;
+
+        var objData = { "fid": m_arrEmployee[idx].mb_fid };
+
+        showConfirmModal("1", "삭제하시겠습니까?", function(confirm) {
+            if (confirm) {
+                requestDeleteEmployee(objData);
+            }
+        });
+    }
+
+    function requestDeleteEmployee(objData) {
+        if (objData == null)
+            return;
+
+        var jsonData = JSON.stringify(objData);
+
+        $.ajax({
+            type: "POST",
+            dataType: "json",
+            data: { json_: jsonData },
+            url: "/capi/deletestore" + location.search,
+            success: function(jResult) {
+                if (jResult.status == "success") {
+                    showAlertBox(0, "삭제완료!");
+                    requestEmployee();
+                } else if (jResult.status == "fail") {
+                    if (jResult.data == 4)
+                        showMessageBox(1, "미확인 충전 건이 존재하므로 삭제할수 없습니다.");
+                    else if (jResult.data == 5)
+                        showMessageBox(1, "미확인 환전 건이 존재하므로 삭제할수 없습니다.");
+                    else
+                        showMessageBox(1, "삭제가 실패되었습니다.");
+                } else if (jResult.status == "logout") {
+                    location.reload();
+                }
+            }
+        });
     }
 
     function saveEmployee() {
@@ -67,6 +141,14 @@
         objData.limix = $("#el-dialog-employee-limix").val();
         objData.mb_print = $("#el-dialog-employee-print").is(":checked") ? 1 : 0;
 
+        if (index == 0) {
+            objData.emp_fid = $("#el-dialog-employee-agency-id").val();
+            if (!objData.emp_fid) {
+                showMessageBox(1, "총판아이디를 선택해주세요");
+                return;
+            }
+        }
+
         if (objData.uid.length < 1 || objData.nickname.length < 1 || objData.pwd.length < 1) {
             showMessageBox(1, "계정정보를 정확히 입력해주세요");
             return;
@@ -80,7 +162,7 @@
                 type: "POST",
                 dataType: "json",
                 data: { json_: jsonData },
-                url: "/bapi/addemployee" + location.search,
+                url: "/capi/addstore" + location.search,
                 success: function(jResult) {
 
                     if (jResult.status == "success") {
@@ -106,7 +188,7 @@
                 type: "POST",
                 dataType: "json",
                 data: { json_: jsonData },
-                url: "/bapi/modifyemployee" + location.search,
+                url: "/capi/modifystore" + location.search,
                 success: function(jResult) {
 
                     if (jResult.status == "success") {
@@ -138,7 +220,7 @@
         $.ajax({
             type: "POST",
             dataType: "json",
-            url: "/bapi/getemployee" + location.search,
+            url: "/capi/getstore" + location.search,
             success: function(jResult) {
 
                 if (jResult.status == "success") {
@@ -180,6 +262,14 @@
             for (var idx in arrEmployee) {
                 tHtml1 += " <tr class=\"el-table__row\">";
                 tHtml2 += " <tr class=\"el-table__row\">";
+
+                tHtml1 += tTd1;
+                tHtml2 += tTd2;
+                tHtml1 += (arrEmployee[idx].mb_emp_uid != null ? arrEmployee[idx].mb_emp_uid : "");
+                tHtml2 += (arrEmployee[idx].mb_emp_uid != null ? arrEmployee[idx].mb_emp_uid : "");
+                tHtml1 += "</div></td>";
+                tHtml2 += "</div></td>";
+
                 tHtml1 += tTd1;
                 tHtml2 += tTd2;
                 tHtml1 += formatStoreUidCell(arrEmployee[idx]);
@@ -260,7 +350,9 @@
                 tHtml1 += tTd2;
                 tHtml2 += tTd1;
                 tHtml1 += "<button type=\"button\" onclick=\"modifyEmpDlg(" + idx + ");\" class=\"el-button el-button--primary el-button--mini\"><span>수정</span></button>";
+                tHtml1 += "<button type=\"button\" onclick=\"deleteEmployee(" + idx + ");\" class=\"el-button el-button--danger el-button--mini\"><span>삭제</span></button>";
                 tHtml2 += "<button type=\"button\" onclick=\"modifyEmpDlg(" + idx + ");\" class=\"el-button el-button--primary el-button--mini\"><span>수정</span></button>";
+                tHtml2 += "<button type=\"button\" onclick=\"deleteEmployee(" + idx + ");\" class=\"el-button el-button--danger el-button--mini\"><span>삭제</span></button>";
 
                 tHtml1 += "</div></td></tr>";
                 tHtml2 += "</div></td></tr>";

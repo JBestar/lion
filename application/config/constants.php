@@ -92,6 +92,11 @@ defined('MEMBER_AGENCY_LEVEL')      OR define('MEMBER_AGENCY_LEVEL', 8);
 defined('MEMBER_EMPLOYEE_LEVEL')    OR define('MEMBER_EMPLOYEE_LEVEL', 7);
 defined('MEMBER_USER_LEVEL')    	OR define('MEMBER_USER_LEVEL', 1);
 
+/** sess_list: 마지막 API 활동 후 이 시간(분) 경과 시 세션 만료 (추첨 간격 5분) */
+defined('SESS_IDLE_TIMEOUT_MINUTES') OR define('SESS_IDLE_TIMEOUT_MINUTES', 5);
+/** 클라이언트 heartbeat 주기(초) — 유휴 탭에서도 세션 유지 */
+defined('SESS_HEARTBEAT_INTERVAL_SECONDS') OR define('SESS_HEARTBEAT_INTERVAL_SECONDS', 60);
+
 defined('TM_OFFSET')    	        OR define('TM_OFFSET', 0);
 
 
