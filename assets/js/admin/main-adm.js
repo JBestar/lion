@@ -93,8 +93,13 @@ function requestDeleteEmployee(objData){
                 showAlertBox(0, "삭제완료!");
                 requestEmployee();
             } else if(jResult.status == "fail")
-            {  
-               showMessageBox(1, "삭제가 실패되었습니다.");
+            {
+                if(jResult.data == 4)
+                    showMessageBox(1, "미확인 충전 건이 존재하므로 삭제할수 없습니다.");
+                else if(jResult.data == 5)
+                    showMessageBox(1, "미확인 환전 건이 존재하므로 삭제할수 없습니다.");
+                else
+                    showMessageBox(1, "삭제가 실패되었습니다.");
             } else if(jResult.status == "logout"){
                 location.reload();
             }

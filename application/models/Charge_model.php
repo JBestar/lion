@@ -125,5 +125,27 @@ class Charge_model extends CI_Model {
     	return $this->db->update($this->mTableName);
     }
 
+    /** 미확인(charge_action_state=1) 충전 신청 존재 여부 — 매장 */
+    public function hasPendingByMbUid($strUid){
+        if(is_null($strUid) || $strUid === '')
+            return false;
+
+        $this->db->where('charge_mb_uid', $strUid);
+        $this->db->where('charge_client_delete', 0);
+        $this->db->where('charge_action_state', 1);
+        return $this->db->count_all_results($this->mTableName) > 0;
+    }
+
+    /** 미확인 충전 신청 존재 여부 — 총판 소속 전체 */
+    public function hasPendingByEmpFid($nEmpFid){
+        if(is_null($nEmpFid) || (int)$nEmpFid < 1)
+            return false;
+
+        $this->db->where('charge_emp_fid', (int)$nEmpFid);
+        $this->db->where('charge_client_delete', 0);
+        $this->db->where('charge_action_state', 1);
+        return $this->db->count_all_results($this->mTableName) > 0;
+    }
+
 
 }

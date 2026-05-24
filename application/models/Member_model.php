@@ -226,7 +226,7 @@ class Member_model extends CI_Model {
 
     function deleteEmployee($objAdmin, $arrReqData, &$del_uid = ""){
         
-        //1:성공, 2:중복아이디, 3:수수료오유, 
+        //1:성공, 0:일반실패, 4:미확인 충전, 5:미확인 환전
         if(is_null($objAdmin))
             return 0;
         if($objAdmin->mb_level <= $arrReqData['level'])
@@ -241,7 +241,22 @@ class Member_model extends CI_Model {
         if($objEmployee->mb_level != $arrReqData['level'])
             return 0;
 
-       
+        $CI =& get_instance();
+        $CI->load->model('charge_model');
+        $CI->load->model('discharge_model');
+
+        if($objEmployee->mb_level == MEMBER_EMPLOYEE_LEVEL) {
+            if($CI->charge_model->hasPendingByMbUid($objEmployee->mb_uid))
+                return 4;
+            if($CI->discharge_model->hasPendingByMbUid($objEmployee->mb_uid))
+                return 5;
+        } else if($objEmployee->mb_level == MEMBER_AGENCY_LEVEL) {
+            if($CI->charge_model->hasPendingByEmpFid($objEmployee->mb_fid))
+                return 4;
+            if($CI->discharge_model->hasPendingByEmpFid($objEmployee->mb_fid))
+                return 5;
+        }
+
         $this->db->set('mb_state_delete', 1);
         
         $this->db->where('mb_fid', $objEmployee->mb_fid);
