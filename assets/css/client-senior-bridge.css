@@ -175,7 +175,25 @@
 
 /* 메뉴바 아래 연한(흰색에 가까운) 구분선 제거 — Element horizontal menu 기본 border */
 .main-content .header .el-menu--horizontal {
+    display: flex;
+    flex-wrap: nowrap;
     border-bottom: none;
+}
+
+.main-content .header .el-menu--horizontal > .el-menu-item {
+    float: none;
+}
+
+/* 발권기: 로그아웃과 같은 행, 메뉴바 오른쪽 끝 */
+.main-content .header .el-menu--horizontal > .el-menu-item.header-menu-item-end {
+    margin-left: auto;
+}
+
+.main-content .header .el-menu--horizontal > .el-menu-item.header-menu-item-end .header-menu-download-icon {
+    margin-left: 6px;
+    font-size: 14px;
+    vertical-align: middle;
+    opacity: 0.9;
 }
 
 /* 메뉴바 hover: 배경 변화 없이 글자만 노란색 */

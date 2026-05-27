@@ -157,3 +157,8 @@ function getBetTypeHtml(type) {
             return '';
     }
 }
+
+/** 헤더 발권기 메뉴 — BIXOLON 드라이버 설치 파일 */
+function downloadBixolonDriver() {
+    location.href = "/assets/download/bixolon_driver.zip";
+}

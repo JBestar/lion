@@ -10,7 +10,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <link rel="stylesheet" href="<?php echo base_url('assets/css/all.css');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=2');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/index_new.css?v=1');?>">
-    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=20');?>">
+    <link rel="stylesheet" href="<?php echo base_url('assets/css/client-senior-bridge.css?v=22');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/default.css?v=1');?>">
     <link rel="stylesheet" href="<?php echo base_url('assets/css/layout.css?v=1');?>">
     <!-- <link rel="stylesheet" href="<?php echo base_url('assets/css/main.css?v=').time();?>"> -->
@@ -49,7 +49,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                                 <li tabindex="5" class="el-menu-item" onclick="showMileageDlg();">포인트</li> 
                                 <li tabindex="7" class="el-menu-item" onclick="showWinHistoryPage();">당첨내역</li> 
                                 <li tabindex="9" class="el-menu-item" onclick="showMessageDlg();">공지사항</li> 
-                                <li tabindex="11" class="el-menu-item"  onclick="logout();">로그아웃</li>
+                                <li tabindex="11" class="el-menu-item" onclick="logout();">로그아웃</li>
+                                <li tabindex="12" class="el-menu-item header-menu-item-end" onclick="downloadBixolonDriver();">발권기<i class="fas fa-download header-menu-download-icon" aria-hidden="true"></i></li>
                             </ul>
                             <div class="pt-1 el-row">
                                 
