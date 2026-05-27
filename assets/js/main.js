@@ -952,11 +952,15 @@ function fillSeniorBetListTable(arrBetData) {
     var rows = m_betListWinsOnly ? raw.filter(function(el) { return isSeniorBetWinHit(el); }) : raw;
     if (rows.length > 0) {
         var prevRoundKey = null;
+        var roundStripeIdx = 0;
         var gid = getGameId();
         for (var i = 0; i < rows.length; i++) {
             var element = rows[i];
             var roundKey = getBetRoundKeyForListSep(element);
-            if (i > 0 && roundKey !== prevRoundKey) tHtml += ROUND_ROW_SEP;
+            if (i > 0 && roundKey !== prevRoundKey) {
+                tHtml += ROUND_ROW_SEP;
+                roundStripeIdx++;
+            }
             prevRoundKey = roundKey;
 
             var betLabel = getBetListLabelSenior(element);
@@ -981,7 +985,7 @@ function fillSeniorBetListTable(arrBetData) {
                 lastCol = "<span class=\"senior-bet-status-badge senior-bet-status-lose\">미적중</span>";
 
             var voUrl = vieworderUrlForBetRow(element);
-            var stripeCls = (i % 2 === 0) ? "senior-bet-list-stripe-a" : "senior-bet-list-stripe-b";
+            var stripeCls = (roundStripeIdx % 2 === 0) ? "senior-bet-list-stripe-a" : "senior-bet-list-stripe-b";
             tHtml += "<tr class=\"senior-bet-list-row " + stripeCls + "\" style=\"height:45px;\">";
             tHtml += "<td class=\"senior-bet-col-round\" align=\"center\" style=\"width:18%;border-bottom:1px solid #515668;\"><a href=\"#\" onclick=\"openMemWin(" + JSON.stringify(voUrl) + ",1200,850);return false;\">" + formatRoundDisplay(roundFid, roundNo, '회') + "</a></td>";
             tHtml += "<td class=\"senior-bet-col-pick\" align=\"center\" style=\"width:34%;border-bottom:1px solid #515668;\">" + betLabel + "</td>";

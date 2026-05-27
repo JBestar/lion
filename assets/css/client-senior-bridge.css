@@ -309,14 +309,14 @@
     border: 0 !important;
 }
 
-/* 배팅리스트 행: 밝음/어둠 배경 교대 */
+/* 배팅리스트 회차: 밝음/어둠 배경 교대 (같은 회차는 동일 색) */
 .senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-a td {
     background-color: #9d9da9 !important;
     border-bottom-color: #565964 !important;
 }
 .senior-bet-list-head #bet_list #client-bet-list-tbody tr.senior-bet-list-row.senior-bet-list-stripe-b td {
-    background-color: #262966 !important;
-    border-bottom-color: #454d5e !important;
+    background-color: #5c5c61 !important;
+    border-bottom-color: #979a9f !important;
 }
 
 /* 회차·선택·배팅금·당첨금 — 행마다 동일 글자색 (결과 열 제외) */
