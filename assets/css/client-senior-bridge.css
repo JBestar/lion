@@ -7,6 +7,14 @@
     z-index: 100050 !important;
 }
 
+/* 알림은 보이되 배팅·게임 선택은 막지 않음 (인쇄 중 연속 배팅) */
+.main-container-wrap #el-alert-box-id.el-alert-box__wrapper {
+    pointer-events: none;
+}
+.main-container-wrap #el-alert-box-id .el-alert-box {
+    pointer-events: auto;
+}
+
 /* Header pbg_info: 선배님 레이아웃 — 한 줄(줄바꿈 없이) */
 .main-content .header .pbg_info {
     flex-wrap: nowrap !important;

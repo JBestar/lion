@@ -1209,17 +1209,16 @@ function doBet() {
             // console.log(jResult);
             $("#bet-btn-id").removeClass("is-loading");
             if (jResult.status == "success") {
-                initBet();
-                showAlertBox(1, "구매하셧습니다!", 250);
-                setRoundResult(getLastCompletedRoundKey(), "after_bet_success");
-                requestRecentBetList("after_bet_success");
-                setTimeout(function() { requestAmountInfo(); }, 500);
-
+                var betFid = jResult.data;
                 if (parseInt(m_objUser.mb_state_print, 10) === 1) {
-                    requestSavePDF(jResult.data);
+                    saveToPDF(buildBetInfoForReceipt(betFid, iMode, nMoney, nRoundNo));
                 }
-
-
+                initBet();
+                setTimeout(function() {
+                    setRoundResult(getLastCompletedRoundKey(), "after_bet_success");
+                    requestRecentBetList("after_bet_success");
+                    setTimeout(function() { requestAmountInfo(); }, 500);
+                }, 0);
             } else if (jResult.status == "fail") {
                 if (jResult.data == 2 || jResult.data == 3)
                     showMessageBox(1, "배팅이 차단되었습니다.");
@@ -1285,8 +1284,34 @@ function cancelBet(fid, objBtn) {
     
 }
 
-function requestSavePDF(iBetId) {
+function getBetRatioForMode(iMode) {
+    var $r = $("#bet-ratio-" + parseInt(iMode, 10) + "-id");
+    if (!$r.length) return 0;
+    var n = parseFloat(String($r.text()).replace(/[^\d.]/g, ""));
+    return isNaN(n) ? 0 : n;
+}
 
+/** 배팅 직후 영수증 — pbbetinfo 왕복 없이 화면·회차 정보로 즉시 구성 */
+function buildBetInfoForReceipt(betFid, iMode, nMoney, nRoundNo) {
+    var now = new Date();
+    var pad2 = function(n) { return (n < 10 ? "0" : "") + n; };
+    var betTime = now.getFullYear() + "-" + pad2(now.getMonth() + 1) + "-" + pad2(now.getDate()) + " " +
+        pad2(now.getHours()) + ":" + pad2(now.getMinutes()) + ":" + pad2(now.getSeconds());
+    var roundFid = m_objRound && m_objRound.round_id != null && m_objRound.round_id !== "" ? m_objRound.round_id : "";
+    return {
+        bet_fid: betFid,
+        bet_mb_uid: m_objUser && m_objUser.mb_uid != null ? m_objUser.mb_uid : "",
+        bet_round_no: nRoundNo,
+        bet_round_fid: roundFid,
+        bet_mode: parseInt(iMode, 10),
+        bet_money: parseInt(nMoney, 10) || 0,
+        bet_ratio: getBetRatioForMode(iMode),
+        bet_time: betTime,
+        bet_game: getGameId()
+    };
+}
+
+function requestSavePDF(iBetId) {
     var objData = { "bet_id": iBetId };
     var jsonData = JSON.stringify(objData);
 
