@@ -91,9 +91,11 @@
                 <table cellspacing="0" cellpadding="0" border="0" class="el-table__body" style="width: 100%;">
                     <colgroup>
                         <col name="el-table_21_column_146" width="136"><col name="el-table_21_column_147" width="135">
-                        <col name="el-table_21_column_148" width="135"><col name="el-table_21_column_149" width="165">
-                        <col name="el-table_21_column_150" width="175"><col name="el-table_21_column_151" width="175">
-                        <col name="el-table_21_column_152" width="175">
+                        <col name="el-table_21_column_148" width="135">
+                        <col name="el-table_21_column_152" width="88">
+                        <col name="el-table_21_column_149" width="165">
+                        <col name="el-table_21_column_150" width="175">
+                        <col name="el-table_21_column_151" width="175">
                     </colgroup>
                     <thead class="has-gutter">
                         <tr class="">
@@ -106,6 +108,9 @@
                             <th colspan="1" rowspan="1" class="el-table_21_column_148     is-leaf">
                                 <div class="cell">상태</div>
                             </th>
+                            <th colspan="1" rowspan="1" class="el-table_21_column_152     is-leaf">
+                                <div class="cell">확인</div>
+                            </th>
                             <th colspan="1" rowspan="1" class="el-table_21_column_149     is-leaf">
                                 <div class="cell">충전유형</div>
                             </th>
@@ -114,9 +119,6 @@
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_21_column_151     is-leaf">
                                 <div class="cell">처리일자</div>
-                            </th>
-                            <th colspan="1" rowspan="1" class="el-table_21_column_152     is-leaf">
-                                <div class="cell"></div>
                             </th>
                             
                         </tr>
@@ -147,5 +149,5 @@
 
 
 
-<script src="<?php echo base_url('assets/js/control/charge-control.js?v=2'); ?>"></script>
+<script src="<?php echo base_url('assets/js/control/charge-control.js?v=3'); ?>"></script>
 

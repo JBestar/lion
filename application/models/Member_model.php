@@ -160,13 +160,9 @@ class Member_model extends CI_Model {
         }
 
         usort($arrStores, function($a, $b){
-            $oa = isset($a->mb_store_online) ? (int)$a->mb_store_online : 0;
-            $ob = isset($b->mb_store_online) ? (int)$b->mb_store_online : 0;
-            if($oa !== $ob)
-                return $ob - $oa;
-            $ta = ($a->mb_time_last != null) ? $a->mb_time_last : '';
-            $tb = ($b->mb_time_last != null) ? $b->mb_time_last : '';
-            return strcmp($tb, $ta);
+            $ua = ($a->mb_uid != null) ? (string)$a->mb_uid : '';
+            $ub = ($b->mb_uid != null) ? (string)$b->mb_uid : '';
+            return strcasecmp($ua, $ub);
         });
 
         return $arrStores;

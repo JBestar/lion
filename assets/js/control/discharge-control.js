@@ -80,6 +80,11 @@
                 tHtml += arrDischarge[idx].exchange_bank_name;
                 tHtml += "</div></td>";
                 tHtml += "<td><div class=\"cell\">";
+                if(arrDischarge[idx].exchange_action_state == 1) {
+                    tHtml += "<button type=\"button\" class=\"el-button el-button--primary el-button--small\" onclick=\"permitDischarge(1, "+idx+");\"><span>확인</span></button>";
+                }
+                tHtml += "</div></td>";
+                tHtml += "<td><div class=\"cell\">";
                 tHtml += arrDischarge[idx].exchange_bank_number;
                 tHtml += "</div></td>";
                 tHtml += "<td><div class=\"cell\">";
@@ -91,12 +96,6 @@
                 tHtml += "<td><div class=\"cell\">";
                 if(parseInt(arrDischarge[idx].exchange_time_process)>0)
                     tHtml += arrDischarge[idx].exchange_time_process;
-                tHtml += "</div></td>";
-                tHtml += "<td><div class=\"cell\">";
-                if(arrDischarge[idx].exchange_action_state == 1) {
-                    tHtml += "<button type=\"button\" class=\"el-button el-button--primary el-button--small\" onclick=\"permitDischarge(1, "+idx+");\"><span>확인</span></button>";
-                    //tHtml += "<button type=\"button\" class=\"el-button el-button--danger el-button--small\" onclick=\"permitDischarge(0, "+idx+");\"><span>취소</span></button>";
-                }
                 tHtml += "</div></td></tr>";
 
             }

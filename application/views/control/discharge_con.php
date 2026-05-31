@@ -99,13 +99,13 @@
                         <col name="el-table_22_column_153" width="114">
                         <col name="el-table_22_column_154" width="112">
                         <col name="el-table_22_column_155" width="92">
+                        <col name="el-table_22_column_162" width="100">
                         <col name="el-table_22_column_156" width="122">
+                        <col name="el-table_22_column_161" width="88">
                         <col name="el-table_22_column_157" width="122">
-                        <col name="el-table_22_column_161" width="100">
                         <col name="el-table_22_column_158" width="122">
                         <col name="el-table_22_column_159" width="140">
                         <col name="el-table_22_column_160" width="140">
-                        <col name="el-table_22_column_161" width="105">
                     </colgroup>
                     <thead class="has-gutter">
                         <tr class="">
@@ -124,6 +124,9 @@
                             <th colspan="1" rowspan="1" class="el-table_22_column_156     is-leaf">
                                 <div class="cell">은행명</div>
                             </th>
+                            <th colspan="1" rowspan="1" class="el-table_22_column_161     is-leaf">
+                                <div class="cell">확인</div>
+                            </th>
                             <th colspan="1" rowspan="1" class="el-table_22_column_157     is-leaf">
                                 <div class="cell">계좌번호</div>
                             </th>
@@ -135,9 +138,6 @@
                             </th>
                             <th colspan="1" rowspan="1" class="el-table_22_column_160     is-leaf">
                                 <div class="cell">처리일자</div>
-                            </th>
-                            <th colspan="1" rowspan="1" class="el-table_22_column_161     is-leaf">
-                                <div class="cell"></div>
                             </th>
                             
                         </tr>
@@ -157,5 +157,5 @@
 
 
 
-<script src="<?php echo base_url('assets/js/control/discharge-control.js?v=2'); ?>"></script>
+<script src="<?php echo base_url('assets/js/control/discharge-control.js?v=3'); ?>"></script>
 

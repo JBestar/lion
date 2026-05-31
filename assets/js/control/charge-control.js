@@ -92,6 +92,12 @@
                     tHtml += "<span class=\"el-tag el-tag--danger el-tag--light\">취소됨</span>";
                 tHtml += "</div></td>";
                 tHtml += "<td><div class=\"cell\">";
+                if(arrCharge[idx].charge_action_state == 1) {
+                    tHtml += "<button type=\"button\" class=\"el-button el-button--primary el-button--small\" onclick=\"permitCharge(1, "+idx+");\"><span>확인</span></button>";
+                    tHtml += " <button type=\"button\" class=\"el-button el-button--danger el-button--small\" onclick=\"permitCharge(0, "+idx+");\"><span>취소</span></button>";
+                }
+                tHtml += "</div></td>";
+                tHtml += "<td><div class=\"cell\">";
                 if(arrCharge[idx].charge_type == 0)
                     tHtml += "<span class=\"el-tag el-tag--light\">신청충전</span>";
                 else if(arrCharge[idx].charge_type == 1)
@@ -103,12 +109,6 @@
                 tHtml += "<td><div class=\"cell\">";
                 if(parseInt(arrCharge[idx].charge_time_process)>0)
                     tHtml += arrCharge[idx].charge_time_process;
-                tHtml += "</div></td>";
-                tHtml += "<td><div class=\"cell\">";
-                if(arrCharge[idx].charge_action_state == 1) {
-                    tHtml += "<button type=\"button\" class=\"el-button el-button--primary el-button--small\" onclick=\"permitCharge(1, "+idx+");\"><span>확인</span></button>";
-                    tHtml += "<button type=\"button\" class=\"el-button el-button--danger el-button--small\" onclick=\"permitCharge(0, "+idx+");\"><span>취소</span></button>";
-                }
                 tHtml += "</div></td></tr>";
             }
         }
