@@ -19,6 +19,50 @@ class Api extends CI_Controller {
 		}
 	}
 
+	/**
+	 * API 지연 원인 확정용 계측 (동작 변경 없음). logs/날짜 파일에 ApiDiag START/END.
+	 * 클라 [XHR-] duration 과 END total_ms 를 같은 시각대에 짝지어 비교.
+	 * - START가 늦게 찍힘(클라만 김) → 세션/앞단 대기(H1)
+	 * - START~END 가 김 → PHP/DB 내부(H2/H3), after_login_ms 로 is_login 구간 분리
+	 */
+	private function apiDiagBegin($api, $nLogId)
+	{
+		$t0 = microtime(true);
+		$rid = substr(str_replace('.', '', uniqid('', true)), -10);
+		writeLog('ApiDiag START api='.$api.' l='.$nLogId.' rid='.$rid);
+		return array(
+			'api' => $api,
+			'l' => $nLogId,
+			'rid' => $rid,
+			't0' => $t0,
+			'marks' => array()
+		);
+	}
+
+	private function apiDiagMark(&$ctx, $name)
+	{
+		if (!is_array($ctx) || !isset($ctx['t0'])) {
+			return;
+		}
+		$ctx['marks'][$name] = (int) round((microtime(true) - $ctx['t0']) * 1000);
+	}
+
+	private function apiDiagEnd(&$ctx, $status)
+	{
+		if (!is_array($ctx) || !isset($ctx['t0'])) {
+			return;
+		}
+		$total = (int) round((microtime(true) - $ctx['t0']) * 1000);
+		$parts = array();
+		if (!empty($ctx['marks']) && is_array($ctx['marks'])) {
+			foreach ($ctx['marks'] as $k => $v) {
+				$parts[] = $k.'='.$v;
+			}
+		}
+		$extra = count($parts) ? (' '.implode(' ', $parts)) : '';
+		writeLog('ApiDiag END api='.$ctx['api'].' l='.$ctx['l'].' rid='.$ctx['rid'].' status='.$status.' total_ms='.$total.$extra);
+	}
+
 	//사용자 로그인
 	public function login(){ 
 		$logHead = "Api.login ";
@@ -110,10 +154,13 @@ class Api extends CI_Controller {
 	//사용자정보
 	public function assets(){ 
 		
-		$nLogId = trim($this->input->get('l'));		
+		$nLogId = trim($this->input->get('l'));
+		$diag = $this->apiDiagBegin('assets', $nLogId);
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
 		{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->unlockPhpSession();
+			$this->apiDiagMark($diag, 'after_unlock_ms');
 			//model
 			$this->load->model('member_model');
 			$this->load->model('confsite_model');
@@ -122,6 +169,7 @@ class Api extends CI_Controller {
 			$objUser = $this->member_model->getInfoByUid($strUid);
 			
 			$objMaintain = $this->confsite_model->getMaintain();
+			$this->apiDiagMark($diag, 'after_db_ms');
 
 			$bIsAlive = false;
 			if(!is_null($objUser) && !is_null($objMaintain)){	
@@ -143,21 +191,30 @@ class Api extends CI_Controller {
 			}
 
 			echo json_encode($objResult);
+			$this->apiDiagEnd($diag, $objResult->status);
 		}
 		else {
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);	
+			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 
 	/** 세션 유지(heartbeat) — is_login()으로 sess_update_time 갱신 */
 	public function heartbeat(){
 		$nLogId = trim($this->input->get('l'));
+		$diag = $this->apiDiagBegin('heartbeat', $nLogId);
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)){
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->unlockPhpSession();
+			$this->apiDiagMark($diag, 'after_unlock_ms');
 			echo json_encode(array('status' => 'success'));
+			$this->apiDiagEnd($diag, 'success');
 		} else {
+			$this->apiDiagMark($diag, 'after_login_ms');
 			echo json_encode(array('status' => 'logout'));
+			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 
@@ -1236,10 +1293,13 @@ class Api extends CI_Controller {
 
 	public function getRecvNewMessage(){
 		
-		$nLogId = trim($this->input->get('l'));		
+		$nLogId = trim($this->input->get('l'));
+		$diag = $this->apiDiagBegin('getRecvNewMessage', $nLogId);
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->unlockPhpSession();
+			$this->apiDiagMark($diag, 'after_unlock_ms');
 			//model
 			$this->load->model('member_model');	
 			$this->load->model('message_model');
@@ -1247,17 +1307,21 @@ class Api extends CI_Controller {
 			$objUser = $this->member_model->getInfoByUid($strUid);	
 
 			$arrMessage = $this->message_model->getRecvMessage($objUser, 1);
+			$this->apiDiagMark($diag, 'after_db_ms');
 
 			$objResult = new StdClass;
 			$objResult->data = $arrMessage;		
 			$objResult->status = "success";
 		
 			echo json_encode($objResult);
+			$this->apiDiagEnd($diag, 'success');
 
 		} else{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
 
-			echo json_encode($arrResult);	
+			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 		
