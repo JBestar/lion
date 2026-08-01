@@ -41,6 +41,13 @@ var m_roundResultReqBusy = false;
 /** 회차 경계 requestCurrentRound 중복 setTimeout 방지 */
 var m_scheduleCurrentRoundTimer = null;
 var m_currentRoundFailRetryTimer = null;
+/** 백그라운드 폴링 페이즈: assets / 메시지 동시 발사 금지 */
+var m_bgPollPhase = 0;
+
+/** 회차·배팅 등 무거운 API가 돌 때 타이머 폴링 생략 */
+function isHeavyApiBusy() {
+    return !!(m_betSubmitBusy || m_currentRoundReqBusy || m_roundResultReqBusy || m_recentBetsReqBusy);
+}
 
 /**
  * XHR 동시성 진단 로그 (F12 Console 필터: XHR)
@@ -132,14 +139,15 @@ $(document).ready(function() {
 
     m_elemCountTm = document.getElementById("betcloserest");
     m_btnBet = document.getElementById("bet-btn-id");
-    selectGame(0);
 
+    // 초기 6발 동시 XHR 금지 — 순서·간격으로 연결 슬롯 여유 확보 (H1b)
+    selectGame(0); // 내부에서 requestCurrentRound 1회
     requestMemberInfo();
-    startSessionHeartbeat();
-    requestConfig();
-    requestCurrentRound();
-    requestRecvMessage();
     addEventListner();
+
+    setTimeout(function() { requestConfig(); }, 200);
+    setTimeout(function() { startSessionHeartbeat(); }, 800);
+    // getRecvNewMessage 는 타이머 폴링에 맡김 (로드 시 동시 발사 안 함)
 
     $(document).on("input", "#bet_money", function() {
         var raw = String($(this).val()).replace(/[^0-9]/g, "");
@@ -149,7 +157,7 @@ $(document).ready(function() {
         $("#bet-money-id").text(v.toLocaleString() + " 원");
     });
 
-    startWorker();
+    setTimeout(function() { startWorker(); }, 400);
 
 });
 
@@ -1154,7 +1162,9 @@ function fillSeniorRoundBetSummary(arrBetData) {
 function showRoundResult(objRound, arrBetData) {
     var drawComplete = objRound != null && parseInt(objRound.round_state, 10) === 1;
     if (drawComplete) {
-        startRecentBetListSettlementPolling("after_showRoundResult_sync");
+        setTimeout(function() {
+            startRecentBetListSettlementPolling("after_showRoundResult_sync");
+        }, 400);
     }
     /*
     소  background: rgb(255, 193, 7); color:white; border:none;
@@ -1242,7 +1252,9 @@ function showRoundResult(objRound, arrBetData) {
     fillSeniorRoundLabel(objRound);
     fillSeniorResultCells(objRound);
     if (!drawComplete) {
-        requestRecentBetList("after_showRoundResult");
+        setTimeout(function() {
+            requestRecentBetList("after_showRoundResult");
+        }, 300);
     }
 }
 
@@ -1434,8 +1446,9 @@ function hasSessionLogId() {
 function startSessionHeartbeat() {
     if (!hasSessionLogId()) return;
     stopSessionHeartbeat();
-    requestSessionHeartbeat();
+    // 첫 heartbeat 를 즉시 쏘지 않아 초기 로드 XHR 과 겹치지 않게 함
     m_sessHeartbeatTimer = setInterval(requestSessionHeartbeat, SESS_HEARTBEAT_MS);
+    setTimeout(requestSessionHeartbeat, 2500);
 }
 
 function stopSessionHeartbeat() {
@@ -1447,6 +1460,7 @@ function stopSessionHeartbeat() {
 
 function requestSessionHeartbeat() {
     if (!hasSessionLogId()) return;
+    if (isHeavyApiBusy() || m_assetsReqBusy || m_recvMsgReqBusy) return;
     $.ajax({
         type: "POST",
         dataType: "json",
@@ -1552,7 +1566,10 @@ function requestCurrentRound() {
         success: function(jResult) {
             if (jResult.status == "success") {
                 if (setCurrentRound(jResult.data)) {
-                    requestRecentBetList("after_pbcurrentgame_setRound");
+                    // 회차 갱신 직후 즉시 목록 조회하면 다른 XHR 과 슬롯 경쟁 — 짧게 미룸
+                    setTimeout(function() {
+                        requestRecentBetList("after_pbcurrentgame_setRound");
+                    }, 300);
                 }
 
             } else if (jResult.status == "logout") {
@@ -2177,9 +2194,17 @@ function showTime() {
     }
 
     let nCurSec = tmCurrent.getSeconds();
+    // 4초마다 assets+메시지를 동시에 쏘지 않음 — 슬롯 포화(H1b) 방지
     if (nCurSec % 4 == 0) {
-        requestAmountInfo();
-        requestRecvMessage();
+        if (!isHeavyApiBusy()) {
+            m_bgPollPhase++;
+            // 3틱 중 2회 잔액, 1회 메시지 (~12초마다 메시지)
+            if (m_bgPollPhase % 3 === 0) {
+                requestRecvMessage();
+            } else {
+                requestAmountInfo();
+            }
+        }
     }
 
     m_objRound.round_current = parseInt(m_objRound.round_current) + tmCurrent.getTime() - m_tmClientTime;
