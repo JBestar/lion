@@ -21,10 +21,11 @@ class Api extends CI_Controller {
 
 	/**
 	 * API 지연 원인 확정용 계측 (동작 변경 없음). logs/날짜 파일에 ApiDiag START/END.
+	 * 대상: assets, heartbeat, getRecvNewMessage, betting, pbcurrentgame, pbrecentbets, pbroundresult
 	 * 클라 [XHR-] duration 과 START req_age_ms / END total_ms 를 짝지어 비교.
-	 * - req_age_ms ≈ 클라 duration, total_ms 작음 → H1a (PHP 세션/부트스트랩 대기)
+	 * - req_age_ms ≈ 클라 duration, total_ms 작음 → H1a (PHP 세션 GET_LOCK/부트스트랩 대기)
 	 * - req_age_ms 작음, 클라만 김 → H1b (PHP 시작 전: 워커/브라우저 Stalled)
-	 * - total_ms 김 → H2/H3 (컨트롤러·DB)
+	 * - total_ms 김 → H2/H3 (컨트롤러·DB; after_login_ms/after_db_ms 로 구간 분리)
 	 */
 	private function apiDiagBegin($api, $nLogId)
 	{
@@ -304,10 +305,13 @@ class Api extends CI_Controller {
 		$jsonData = $_REQUEST['json_'];
 		$arrRaData = json_decode($jsonData, true);
 
-		$nLogId = trim($this->input->get('l'));		
+		$nLogId = trim($this->input->get('l'));
+		$diag = $this->apiDiagBegin('pbcurrentgame', $nLogId);
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->unlockPhpSession();
+			$this->apiDiagMark($diag, 'after_unlock_ms');
 			$gameId = intval($arrRaData['game']);
 
 			//model
@@ -356,12 +360,16 @@ class Api extends CI_Controller {
 				$arrResult['data'] = $arrRoundData;
 				$arrResult['status'] = "success";
 			}
-			
+
+			$this->apiDiagMark($diag, 'after_db_ms');
 			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, isset($arrResult['status']) ? $arrResult['status'] : 'ok');
 		}
 		else{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);	
+			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 
@@ -370,10 +378,13 @@ class Api extends CI_Controller {
 		$jsonData = $_REQUEST['json_'];
 		$arrBetData = json_decode($jsonData, true);
 		
-		$nLogId = trim($this->input->get('l'));		
+		$nLogId = trim($this->input->get('l'));
+		$diag = $this->apiDiagBegin('betting', $nLogId);
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->unlockPhpSession();
+			$this->apiDiagMark($diag, 'after_unlock_ms');
 			$this->load->model('member_model');
 			$this->load->model('confgame_model');
 			$this->load->model('confsite_model');
@@ -527,12 +538,15 @@ class Api extends CI_Controller {
 				$arrResult['status'] = "fail";
 				$arrResult['data'] = $iResult;
 			}
+			$this->apiDiagMark($diag, 'after_db_ms');
 			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, $arrResult['status']);
 		}
 		else{//logout		
-			
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);	
+			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, 'logout');
 		}
 
 
@@ -754,9 +768,12 @@ class Api extends CI_Controller {
 		$arrReqData = json_decode($jsonData, true);
 
 		$nLogId = trim($this->input->get('l'));
+		$diag = $this->apiDiagBegin('pbrecentbets', $nLogId);
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
 		{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->unlockPhpSession();
+			$this->apiDiagMark($diag, 'after_unlock_ms');
 			$this->load->model('member_model');
 			$this->load->model('pbbet_model');
 
@@ -768,15 +785,19 @@ class Api extends CI_Controller {
 			}
 
 			$arrBets = $this->pbbet_model->getByUserId($strUid, $nLimit, $nGameId);
+			$this->apiDiagMark($diag, 'after_db_ms');
 
 			$objResult = new StdClass;
 			$objResult->bets = $arrBets;
 			$objResult->status = "success";
 
 			echo json_encode($objResult);
+			$this->apiDiagEnd($diag, 'success');
 		} else {
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
 			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 
@@ -787,10 +808,13 @@ class Api extends CI_Controller {
 			$arrReqData = array();
 		}
 
-		$nLogId = trim($this->input->get('l'));		
+		$nLogId = trim($this->input->get('l'));
+		$diag = $this->apiDiagBegin('pbroundresult', $nLogId);
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->unlockPhpSession();
+			$this->apiDiagMark($diag, 'after_unlock_ms');
 			$this->load->model('member_model');	
 			$this->load->model('pbround_model');
 			$this->load->model('pbbet_model');	
@@ -836,15 +860,19 @@ class Api extends CI_Controller {
 				}
 			}
 
+			$this->apiDiagMark($diag, 'after_db_ms');
 			$objResult = new StdClass;
 			$objResult->round = $objRound;		
 			$objResult->bets = $arrBetData;		
 			$objResult->status = "success";
 			echo json_encode($objResult);
+			$this->apiDiagEnd($diag, 'success');
 
 		} else{
+			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);	
+			echo json_encode($arrResult);
+			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 
