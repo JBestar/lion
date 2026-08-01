@@ -31,6 +31,11 @@ var m_betListWinsOnly = false;
 /** sess_list 유지 heartbeat (60초) */
 var m_sessHeartbeatTimer = null;
 var SESS_HEARTBEAT_MS = 60000;
+/** 진행 중 AJAX 중복 방지 (연결 슬롯 포화·pending 폭주 방지) */
+var m_assetsReqBusy = false;
+var m_recvMsgReqBusy = false;
+var m_recentBetsReqBusy = false;
+var m_betSubmitBusy = false;
 
 $(document).ready(function() {
 
@@ -917,6 +922,8 @@ function updateSeniorCurBetDisplays(arrBetData) {
 function requestRecentBetList(reason) {
     var gid = getGameId();
     if (gid < 0) return;
+    if (m_recentBetsReqBusy) return;
+    m_recentBetsReqBusy = true;
     var objData = { game: gid, limit: 80 };
     $.ajax({
         type: "POST",
@@ -929,18 +936,23 @@ function requestRecentBetList(reason) {
                 fillSeniorBetListTable(bets);
                 if (m_pbRecentBetsPollTimer) {
                     var hasWait = false;
+                    var curNo = m_objRound && m_objRound.round_no != null ? String(m_objRound.round_no) : "";
                     for (var wj = 0; wj < bets.length; wj++) {
                         if (parseInt(bets[wj].bet_game, 10) !== gid) continue;
-                        if (parseInt(bets[wj].bet_state, 10) === PB_BET_WAIT) {
-                            hasWait = true;
-                            break;
-                        }
+                        if (parseInt(bets[wj].bet_state, 10) !== PB_BET_WAIT) continue;
+                        // 현재 진행 회차 대기는 정산 폴링 유지 사유에서 제외
+                        if (curNo !== "" && String(bets[wj].bet_round_no) === curNo) continue;
+                        hasWait = true;
+                        break;
                     }
                     if (!hasWait) stopRecentBetListSettlementPolling();
                 }
             } else if (jResult.status === "logout") {
                 location.reload();
             }
+        },
+        complete: function() {
+            m_recentBetsReqBusy = false;
         }
     });
 }
@@ -1188,6 +1200,8 @@ function doBet() {
         showMessageBox(0, "금액을 선택해주세요");
         return;
     }
+    if (m_betSubmitBusy) return;
+    m_betSubmitBusy = true;
 
     var objData = {
         "game": getGameId(),
@@ -1208,17 +1222,16 @@ function doBet() {
         success: function(jResult) {
             // console.log(jResult);
             $("#bet-btn-id").removeClass("is-loading");
+            m_betSubmitBusy = false;
             if (jResult.status == "success") {
                 var betFid = jResult.data;
                 if (parseInt(m_objUser.mb_state_print, 10) === 1) {
                     saveToPDF(buildBetInfoForReceipt(betFid, iMode, nMoney, nRoundNo));
                 }
                 initBet();
-                setTimeout(function() {
-                    setRoundResult(getLastCompletedRoundKey(), "after_bet_success");
-                    requestRecentBetList("after_bet_success");
-                    setTimeout(function() { requestAmountInfo(); }, 500);
-                }, 0);
+                // 직전회차 setRoundResult는 정산 1초 폴링을 켜 연결을 잠식함 → 목록·잔액만 갱신
+                requestRecentBetList("after_bet_success");
+                requestAmountInfo();
             } else if (jResult.status == "fail") {
                 if (jResult.data == 2 || jResult.data == 3)
                     showMessageBox(1, "배팅이 차단되었습니다.");
@@ -1240,6 +1253,7 @@ function doBet() {
         },
         error: function(request, status, error) {
             $("#bet-btn-id").removeClass("is-loading");
+            m_betSubmitBusy = false;
             // console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
         }
 
@@ -1264,9 +1278,8 @@ function cancelBet(fid, objBtn) {
             $(objBtn).attr("disabled", false);
             if (jResult.status == "success") {
                 showAlertBox(0, "취소되었습니다.", 2000);
-                setRoundResult(getLastCompletedRoundKey(), "after_cancel");
                 requestRecentBetList("after_cancel");
-                setTimeout(function() { requestAmountInfo();}, 500);
+                requestAmountInfo();
                 
             } else if (jResult.status == "fail") {
                 if(jResult.msg){
@@ -1388,7 +1401,8 @@ function requestMemberInfo() {
 }
 
 function requestAmountInfo() {
-
+    if (m_assetsReqBusy) return;
+    m_assetsReqBusy = true;
     $.ajax({
         type: "POST",
         dataType: "json",
@@ -1403,6 +1417,9 @@ function requestAmountInfo() {
         },
         error: function(request, status, error) {
 
+        },
+        complete: function() {
+            m_assetsReqBusy = false;
         }
     });
 
@@ -1898,7 +1915,8 @@ function requestSendMessages() {
 }
 
 function requestRecvMessage() {
-
+    if (m_recvMsgReqBusy) return;
+    m_recvMsgReqBusy = true;
     $.ajax({
         type: "POST",
         dataType: "json",
@@ -1912,6 +1930,9 @@ function requestRecvMessage() {
         },
         error: function(request, status, error) {
 
+        },
+        complete: function() {
+            m_recvMsgReqBusy = false;
         }
     });
 
@@ -3015,21 +3036,13 @@ function bixolonReceiptAjaxFailUserMessage(xhr) {
     return base + " WebDriver.exe 실행, 포트 8080, 방화벽을 확인해 주세요.";
 }
 
+/** 인쇄 원인 추적용 서버 AJAX는 연결을 잠식하므로 비활성. 필요 시 window.LION_RECEIPT_PRINT_DEBUG = true */
 function logReceiptPrintDebug(obj) {
+    if (window.LION_RECEIPT_PRINT_DEBUG !== true) return;
     try {
-        var body = obj && typeof obj === "object" ? obj : { phase: "unknown", note: obj };
-        body.client_ts = new Date().toISOString();
-        if (typeof location !== "undefined") {
-            body.page_origin = location.origin;
-            body.page_path = location.pathname;
+        if (typeof console !== "undefined" && console.log) {
+            console.log("[영수증]", obj);
         }
-        $.ajax({
-            url: "/api/receiptprintlog" + location.search,
-            type: "POST",
-            dataType: "json",
-            data: { json_: JSON.stringify(body) },
-            timeout: 25000
-        });
     } catch (e) {}
 }
 
@@ -3360,38 +3373,6 @@ function saveToPDF(objBetInfo) {
         check_status_url: getBixolonWebDriverCheckStatusUrl()
     });
 
-    var strRound = "";
-    var strBetName = "";
-    if (m_objRound.game == 1) {
-        strRound = objBetInfo.bet_round_no;
-        strBetName = getBetDetail(objBetInfo.bet_mode);
-    } else if (m_objRound.game == 2) {
-        strRound = objBetInfo.bet_round_no;
-        strBetName = getBetDetail(objBetInfo.bet_mode);
-    } else {
-        strRound = objBetInfo.bet_round_fid;
-        strBetName = getBetDetail(objBetInfo.bet_mode);
-    }
-
-    var expectedPoints = parseInt(objBetInfo.bet_ratio * objBetInfo.bet_money, 10);
-    if (isNaN(expectedPoints)) expectedPoints = 0;
-
-    var wdUrl = getBixolonWebDriverEndpoint();
-    var logPayload = {
-        bet_fid: objBetInfo.bet_fid,
-        bet_mb_uid: objBetInfo.bet_mb_uid,
-        bet_round_no: objBetInfo.bet_round_no,
-        bet_round_fid: objBetInfo.bet_round_fid,
-        bet_mode: objBetInfo.bet_mode,
-        bet_money: objBetInfo.bet_money,
-        bet_ratio: objBetInfo.bet_ratio,
-        betname: strBetName,
-        game: m_objRound ? m_objRound.game : "",
-        print_param_round: strRound,
-        print_url: wdUrl + " (BIXOLON WebDriver POST)"
-    };
-    logReceiptPrintDebug({ phase: "receiptlog_summary", bet_fid: logPayload.bet_fid, game: logPayload.game, print_url_snip: (wdUrl + "").substring(0, 80) });
-
     var payload = buildBixolonReceiptWebDriverPayload(objBetInfo);
     postBixolonWebDriverPrint(payload, function(err, res, extra) {
         extra = extra || {};
@@ -3421,13 +3402,6 @@ function saveToPDF(objBetInfo) {
         if (ui.alertType === 0) {
             showAlertBox(0, ui.msg, ui.ms);
         }
-    });
-
-    $.ajax({
-        type: "POST",
-        dataType: "json",
-        data: { json_: JSON.stringify(logPayload) },
-        url: "/api/receiptlog" + location.search
     });
 }
 
