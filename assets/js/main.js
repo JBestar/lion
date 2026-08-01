@@ -43,10 +43,30 @@ var m_scheduleCurrentRoundTimer = null;
 var m_currentRoundFailRetryTimer = null;
 /** 백그라운드 폴링 페이즈: assets / 메시지 동시 발사 금지 */
 var m_bgPollPhase = 0;
+/** 로컬 영수증 인쇄 중·대기열 (최신 1건만 유지) */
+var m_printReqBusy = false;
+var m_printPendingInfo = null;
 
 /** 회차·배팅 등 무거운 API가 돌 때 타이머 폴링 생략 */
 function isHeavyApiBusy() {
     return !!(m_betSubmitBusy || m_currentRoundReqBusy || m_roundResultReqBusy || m_recentBetsReqBusy);
+}
+
+/**
+ * 배팅 성공 후: lion-88.com API 를 직렬화한 뒤 인쇄는 마지막에 비차단으로.
+ * (success 콜백에서 print+list+assets 동시 발사 → 슬롯 포화 방지)
+ */
+function runAfterBetSuccessPipeline(printInfo) {
+    requestRecentBetList("after_bet_success", function() {
+        requestAmountInfo(function() {
+            m_betSubmitBusy = false;
+            if (printInfo) {
+                setTimeout(function() {
+                    saveToPDF(printInfo);
+                }, 100);
+            }
+        });
+    });
 }
 
 /**
@@ -1009,10 +1029,18 @@ function updateSeniorCurBetDisplays(arrBetData) {
     });
 }
 
-function requestRecentBetList(reason) {
+function requestRecentBetList(reason, onDone) {
     var gid = getGameId();
-    if (gid < 0) return;
-    if (m_recentBetsReqBusy) return;
+    if (gid < 0) {
+        if (typeof onDone === "function") onDone();
+        return;
+    }
+    if (m_recentBetsReqBusy) {
+        if (typeof onDone === "function") {
+            setTimeout(function() { requestRecentBetList(reason, onDone); }, 200);
+        }
+        return;
+    }
     m_recentBetsReqBusy = true;
     var objData = { game: gid, limit: 80 };
     $.ajax({
@@ -1043,6 +1071,7 @@ function requestRecentBetList(reason) {
         },
         complete: function() {
             m_recentBetsReqBusy = false;
+            if (typeof onDone === "function") onDone();
         }
     });
 }
@@ -1316,17 +1345,17 @@ function doBet() {
         success: function(jResult) {
             // console.log(jResult);
             $("#bet-btn-id").removeClass("is-loading");
-            m_betSubmitBusy = false;
             if (jResult.status == "success") {
                 var betFid = jResult.data;
+                var printInfo = null;
                 if (parseInt(m_objUser.mb_state_print, 10) === 1) {
-                    saveToPDF(buildBetInfoForReceipt(betFid, iMode, nMoney, nRoundNo));
+                    printInfo = buildBetInfoForReceipt(betFid, iMode, nMoney, nRoundNo);
                 }
                 initBet();
-                // 직전회차 setRoundResult는 정산 1초 폴링을 켜 연결을 잠식함 → 목록·잔액만 갱신
-                requestRecentBetList("after_bet_success");
-                requestAmountInfo();
+                // 목록 → 잔액 → 인쇄(로컬) 순. 동시 발사 금지 (busy 는 파이프라인 끝에서 해제)
+                runAfterBetSuccessPipeline(printInfo);
             } else if (jResult.status == "fail") {
+                m_betSubmitBusy = false;
                 if (jResult.data == 2 || jResult.data == 3)
                     showMessageBox(1, "배팅이 차단되었습니다.");
                 else if (jResult.data == 6)
@@ -1342,7 +1371,10 @@ function doBet() {
                 else
                     showMessageBox(1, "배팅이 실패되었습니다.");
             } else if (jResult.status == "logout") {
+                m_betSubmitBusy = false;
                 location.reload();
+            } else {
+                m_betSubmitBusy = false;
             }
         },
         error: function(request, status, error) {
@@ -1496,8 +1528,13 @@ function requestMemberInfo() {
 
 }
 
-function requestAmountInfo() {
-    if (m_assetsReqBusy) return;
+function requestAmountInfo(onDone) {
+    if (m_assetsReqBusy) {
+        if (typeof onDone === "function") {
+            setTimeout(function() { requestAmountInfo(onDone); }, 200);
+        }
+        return;
+    }
     m_assetsReqBusy = true;
     $.ajax({
         type: "POST",
@@ -1516,6 +1553,7 @@ function requestAmountInfo() {
         },
         complete: function() {
             m_assetsReqBusy = false;
+            if (typeof onDone === "function") onDone();
         }
     });
 
@@ -3436,7 +3474,7 @@ function postBixolonWebDriverPrint(payload, onDone) {
         contentType: printPost.contentType,
         processData: printPost.processData,
         dataType: "json",
-        timeout: 20000,
+        timeout: 8000,
         success: function(res) {
             logReceiptPrintDebug({
                 phase: "bixolon_print_response",
@@ -3485,6 +3523,13 @@ function saveToPDF(objBetInfo) {
     if (objBetInfo == null)
         return;
 
+    if (m_printReqBusy) {
+        m_printPendingInfo = objBetInfo;
+        return;
+    }
+    m_printReqBusy = true;
+    m_printPendingInfo = null;
+
     logReceiptPrintDebug({
         phase: "saveToPDF_start",
         mb_state_print: m_objUser ? m_objUser.mb_state_print : null,
@@ -3503,6 +3548,13 @@ function saveToPDF(objBetInfo) {
 
     var payload = buildBixolonReceiptWebDriverPayload(objBetInfo);
     postBixolonWebDriverPrint(payload, function(err, res, extra) {
+        m_printReqBusy = false;
+        var pending = m_printPendingInfo;
+        m_printPendingInfo = null;
+        if (pending) {
+            setTimeout(function() { saveToPDF(pending); }, 50);
+        }
+
         extra = extra || {};
         var skippedCheck = !!extra.skippedCheckStatus;
         var ui = null;
