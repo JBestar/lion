@@ -10,7 +10,7 @@ class Api extends CI_Controller {
 
 	/**
 	 * PHP 세션 락 해제 — 동일 탭 병렬 AJAX(assets/pbcurrentgame 등)가 서로 기다리지 않게 함.
-	 * sess_model->is_login()으로 sess_list 갱신한 뒤에만 호출.
+	 * 이후 이 요청에서 $_SESSION 을 쓰지 않을 때만 호출 (sess_list DB 갱신과는 무관).
 	 */
 	private function unlockPhpSession()
 	{
@@ -217,10 +217,11 @@ class Api extends CI_Controller {
 	public function heartbeat(){
 		$nLogId = trim($this->input->get('l'));
 		$diag = $this->apiDiagBegin('heartbeat', $nLogId);
+		// PHP 세션 락을 먼저 풀어 동일 세션의 다른 AJAX가 줄 서지 않게 함 (이후 $_SESSION 쓰기 없음)
+		$this->unlockPhpSession();
+		$this->apiDiagMark($diag, 'after_unlock_ms');
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)){
 			$this->apiDiagMark($diag, 'after_login_ms');
-			$this->unlockPhpSession();
-			$this->apiDiagMark($diag, 'after_unlock_ms');
 			echo json_encode(array('status' => 'success'));
 			$this->apiDiagEnd($diag, 'success');
 		} else {
