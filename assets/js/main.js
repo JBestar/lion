@@ -42,7 +42,84 @@ var m_roundResultReqBusy = false;
 var m_scheduleCurrentRoundTimer = null;
 var m_currentRoundFailRetryTimer = null;
 
+/**
+ * XHR 동시성 진단 로그 (F12 Console 필터: XHR)
+ * - 기본 ON. 끄려면: window.LION_XHR_DIAG = false 후 새로고침
+ * - inFlight>=6 인데 duration이 길면 브라우저 연결 슬롯 포화(Stalled) 가설
+ * - inFlight가 적은데 duration만 길면 서버 Waiting 가설
+ */
+var m_xhrInFlight = [];
+
+function xhrDiagEnabled() {
+    return window.LION_XHR_DIAG !== false;
+}
+
+function xhrDiagLabel(url) {
+    try {
+        var u = String(url || "");
+        var path = u.split("?")[0];
+        var m = path.match(/\/api\/([^\/\?]+)/i);
+        if (m) return m[1];
+        var parts = path.split("/");
+        return parts[parts.length - 1] || path || "?";
+    } catch (e) {
+        return "?";
+    }
+}
+
+function xhrDiagInFlightNames() {
+    var names = [];
+    for (var i = 0; i < m_xhrInFlight.length; i++) {
+        names.push(m_xhrInFlight[i].label);
+    }
+    return names;
+}
+
+function installXhrDiag() {
+    if (window.__lionXhrDiagInstalled) return;
+    window.__lionXhrDiagInstalled = true;
+
+    $(document).ajaxSend(function(event, jqXHR, settings) {
+        if (!xhrDiagEnabled()) return;
+        var label = xhrDiagLabel(settings.url);
+        m_xhrInFlight.push({
+            label: label,
+            url: settings.url,
+            t0: (window.performance && performance.now) ? performance.now() : Date.now(),
+            jqXHR: jqXHR
+        });
+        var n = m_xhrInFlight.length;
+        var warn = n >= 6 ? " *** SLOT_PRESSURE ***" : "";
+        console.log("[XHR+] " + label + " inFlight=" + n + " [" + xhrDiagInFlightNames().join(", ") + "]" + warn);
+    });
+
+    $(document).ajaxComplete(function(event, jqXHR, settings) {
+        if (!xhrDiagEnabled()) return;
+        var t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+        var idx = -1;
+        for (var i = 0; i < m_xhrInFlight.length; i++) {
+            if (m_xhrInFlight[i].jqXHR === jqXHR) {
+                idx = i;
+                break;
+            }
+        }
+        var label = idx >= 0 ? m_xhrInFlight[idx].label : xhrDiagLabel(settings.url);
+        var ms = idx >= 0 ? Math.round(t1 - m_xhrInFlight[idx].t0) : -1;
+        if (idx >= 0) m_xhrInFlight.splice(idx, 1);
+        var st = jqXHR && jqXHR.status != null ? jqXHR.status : 0;
+        var longMark = ms >= 3000 ? " *** SLOW ***" : "";
+        console.log("[XHR-] " + label + " " + ms + "ms status=" + st + " inFlight=" + m_xhrInFlight.length + longMark);
+    });
+
+    window.lionXhrDump = function() {
+        console.log("[XHR dump] inFlight=" + m_xhrInFlight.length + " [" + xhrDiagInFlightNames().join(", ") + "]", m_xhrInFlight.slice());
+        return m_xhrInFlight.length;
+    };
+}
+
 $(document).ready(function() {
+
+    installXhrDiag();
 
     m_objRound.game = 0;
     m_objRound.round_no = 0;
