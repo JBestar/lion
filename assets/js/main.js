@@ -36,6 +36,11 @@ var m_assetsReqBusy = false;
 var m_recvMsgReqBusy = false;
 var m_recentBetsReqBusy = false;
 var m_betSubmitBusy = false;
+var m_currentRoundReqBusy = false;
+var m_roundResultReqBusy = false;
+/** 회차 경계 requestCurrentRound 중복 setTimeout 방지 */
+var m_scheduleCurrentRoundTimer = null;
+var m_currentRoundFailRetryTimer = null;
 
 $(document).ready(function() {
 
@@ -884,7 +889,7 @@ function startRecentBetListSettlementPolling(immediateReason) {
         requestRecentBetList(immediateReason);
     }
     var ticks = 0;
-    var maxTicks = 120;
+    var maxTicks = 40;
     m_pbRecentBetsPollTimer = setInterval(function() {
         ticks++;
         if (ticks > maxTicks) {
@@ -892,7 +897,7 @@ function startRecentBetListSettlementPolling(immediateReason) {
             return;
         }
         requestRecentBetList("poll_settlement");
-    }, 1000);
+    }, 3000);
 }
 
 function updateSeniorCurBetDisplays(arrBetData) {
@@ -1448,7 +1453,17 @@ function requestConfig() {
 
 }
 
+function scheduleRequestCurrentRound(delayMs) {
+    if (m_scheduleCurrentRoundTimer) return;
+    m_scheduleCurrentRoundTimer = setTimeout(function() {
+        m_scheduleCurrentRoundTimer = null;
+        requestCurrentRound();
+    }, delayMs);
+}
+
 function requestCurrentRound() {
+    if (m_currentRoundReqBusy) return;
+    m_currentRoundReqBusy = true;
 
     var objData = { "game": getGameId() };
     var jsonData = JSON.stringify(objData);
@@ -1466,12 +1481,18 @@ function requestCurrentRound() {
             } else if (jResult.status == "logout") {
                 location.reload();
             } else {
-                setTimeout(function() { requestCurrentRound(); }, 5000);
+                if (m_currentRoundFailRetryTimer) clearTimeout(m_currentRoundFailRetryTimer);
+                m_currentRoundFailRetryTimer = setTimeout(function() {
+                    m_currentRoundFailRetryTimer = null;
+                    requestCurrentRound();
+                }, 5000);
             }
         },
         error: function(request, status, error) {
+        },
+        complete: function() {
+            m_currentRoundReqBusy = false;
         }
-
     });
 }
 
@@ -1482,6 +1503,8 @@ function pbRoundResultIsComplete(r) {
 function requestRoundResult() {
     var nRoundId = $("#buy-info-round-id").text();
     if (nRoundId.length < 1) return;
+    if (m_roundResultReqBusy) return;
+    m_roundResultReqBusy = true;
 
     var nDate = $("#buy-info-round-id").attr("name");
 
@@ -1519,6 +1542,9 @@ function requestRoundResult() {
             }
         },
         error: function(request, status, error) {
+        },
+        complete: function() {
+            m_roundResultReqBusy = false;
         }
     });
 }
@@ -2123,9 +2149,9 @@ function showTime() {
     //회차결과현시
 
 
-    //회차요청
+    //회차요청 — 매초 setTimeout 쌓지 않고 1건만 예약
     if (m_iRoundErrorCnt < 20 && m_objRound.round_current >= m_objRound.round_end - 3000 && m_objRound.round_current < m_objRound.round_end + 600000) {
-        setTimeout(function() { requestCurrentRound(); }, 2000);
+        scheduleRequestCurrentRound(2000);
     }
 
     syncBetLockOverlay();

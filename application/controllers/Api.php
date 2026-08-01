@@ -8,6 +8,17 @@ class Api extends CI_Controller {
 
 	}
 
+	/**
+	 * PHP 세션 락 해제 — 동일 탭 병렬 AJAX(assets/pbcurrentgame 등)가 서로 기다리지 않게 함.
+	 * sess_model->is_login()으로 sess_list 갱신한 뒤에만 호출.
+	 */
+	private function unlockPhpSession()
+	{
+		if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
+			@session_write_close();
+		}
+	}
+
 	//사용자 로그인
 	public function login(){ 
 		$logHead = "Api.login ";
@@ -102,6 +113,7 @@ class Api extends CI_Controller {
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
 		{
+			$this->unlockPhpSession();
 			//model
 			$this->load->model('member_model');
 			$this->load->model('confsite_model');
@@ -142,6 +154,7 @@ class Api extends CI_Controller {
 	public function heartbeat(){
 		$nLogId = trim($this->input->get('l'));
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)){
+			$this->unlockPhpSession();
 			echo json_encode(array('status' => 'success'));
 		} else {
 			echo json_encode(array('status' => 'logout'));
@@ -224,6 +237,7 @@ class Api extends CI_Controller {
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
+			$this->unlockPhpSession();
 			$gameId = intval($arrRaData['game']);
 
 			//model
@@ -289,6 +303,7 @@ class Api extends CI_Controller {
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
+			$this->unlockPhpSession();
 			$this->load->model('member_model');
 			$this->load->model('confgame_model');
 			$this->load->model('confsite_model');
@@ -671,6 +686,7 @@ class Api extends CI_Controller {
 		$nLogId = trim($this->input->get('l'));
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
 		{
+			$this->unlockPhpSession();
 			$this->load->model('member_model');
 			$this->load->model('pbbet_model');
 
@@ -704,6 +720,7 @@ class Api extends CI_Controller {
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
+			$this->unlockPhpSession();
 			$this->load->model('member_model');	
 			$this->load->model('pbround_model');
 			$this->load->model('pbbet_model');	
@@ -1222,7 +1239,7 @@ class Api extends CI_Controller {
 		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
-			
+			$this->unlockPhpSession();
 			//model
 			$this->load->model('member_model');	
 			$this->load->model('message_model');
