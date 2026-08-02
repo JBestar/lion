@@ -24,8 +24,14 @@ var PB_BET_WAIT = 1;
 var PB_BET_LOSS = 2;
 var PB_BET_WIN = 3;
 var PB_BET_CANCEL = 4;
-/** 정산 반영까지 배팅 목록 주기 재조회 */
+/** 정산 반영까지 배팅 목록 주기 재조회 (대기 베팅 있을 때만) */
 var m_pbRecentBetsPollTimer = null;
+var m_pbRecentBetsPollTicks = 0;
+var RECENT_BETS_SETTLE_INTERVAL_MS = 4000;
+var RECENT_BETS_SETTLE_MAX_TICKS = 12; // ~48초
+var m_recentBetsReqBusy = false;
+var m_recentBetsLastAt = 0;
+var RECENT_BETS_MIN_GAP_MS = 1500;
 /** 당첨내역 메뉴: 좌측 배팅리스트에 적중(결과 확정) 행만 표시 */
 var m_betListWinsOnly = false;
 /** sess_list 유지 heartbeat (60초) */
@@ -864,30 +870,37 @@ function getBetRoundKeyForListSep(element) {
 }
 
 /** 시니어 패널 각 카드 하단 노란 숫자: 현재 회차(bet_round_fid)에 해당 bet_mode로 배팅한 누적 금액 */
+function recentBetsHaveWait(bets) {
+    var gid = getGameId();
+    if (gid < 0 || bets == null || !bets.length) return false;
+    for (var i = 0; i < bets.length; i++) {
+        if (parseInt(bets[i].bet_game, 10) !== gid) continue;
+        if (parseInt(bets[i].bet_state, 10) === PB_BET_WAIT) return true;
+    }
+    return false;
+}
+
 function stopRecentBetListSettlementPolling() {
     if (m_pbRecentBetsPollTimer) {
         clearInterval(m_pbRecentBetsPollTimer);
         m_pbRecentBetsPollTimer = null;
     }
+    m_pbRecentBetsPollTicks = 0;
 }
 
-/** 추첨 직후 DB 정산이 늦을 때 목록만 새로고침 없이 따라가게 함. immediateReason 있으면 setInterval 전에 1회 즉시 호출 */
-function startRecentBetListSettlementPolling(immediateReason) {
+/** 대기(미정산) 베팅이 있을 때만 느슨하게 재조회. 이미 돌고 있으면 재시작하지 않음 */
+function ensureRecentBetListSettlementPolling() {
     if (getGameId() < 0) return;
-    stopRecentBetListSettlementPolling();
-    if (immediateReason) {
-        requestRecentBetList(immediateReason);
-    }
-    var ticks = 0;
-    var maxTicks = 120;
+    if (m_pbRecentBetsPollTimer) return;
+    m_pbRecentBetsPollTicks = 0;
     m_pbRecentBetsPollTimer = setInterval(function() {
-        ticks++;
-        if (ticks > maxTicks) {
+        m_pbRecentBetsPollTicks++;
+        if (m_pbRecentBetsPollTicks > RECENT_BETS_SETTLE_MAX_TICKS) {
             stopRecentBetListSettlementPolling();
             return;
         }
         requestRecentBetList("poll_settlement");
-    }, 1000);
+    }, RECENT_BETS_SETTLE_INTERVAL_MS);
 }
 
 function updateSeniorCurBetDisplays(arrBetData) {
@@ -917,30 +930,34 @@ function updateSeniorCurBetDisplays(arrBetData) {
 function requestRecentBetList(reason) {
     var gid = getGameId();
     if (gid < 0) return;
+    if (m_recentBetsReqBusy) return;
+    var now = Date.now();
+    if (now - m_recentBetsLastAt < RECENT_BETS_MIN_GAP_MS) return;
+    m_recentBetsLastAt = now;
+    m_recentBetsReqBusy = true;
     var objData = { game: gid, limit: 80 };
     $.ajax({
         type: "POST",
         dataType: "json",
         data: { json_: JSON.stringify(objData) },
         url: "/api/pbrecentbets" + location.search,
+        timeout: 10000,
         success: function(jResult) {
             if (jResult.status === "success") {
                 var bets = jResult.bets || [];
                 fillSeniorBetListTable(bets);
-                if (m_pbRecentBetsPollTimer) {
-                    var hasWait = false;
-                    for (var wj = 0; wj < bets.length; wj++) {
-                        if (parseInt(bets[wj].bet_game, 10) !== gid) continue;
-                        if (parseInt(bets[wj].bet_state, 10) === PB_BET_WAIT) {
-                            hasWait = true;
-                            break;
-                        }
-                    }
-                    if (!hasWait) stopRecentBetListSettlementPolling();
+                // 배팅 중 대기는 정상 → 폴링 시작 안 함. 추첨 후(after_draw_wait/poll)만 추적.
+                if (!recentBetsHaveWait(bets)) {
+                    stopRecentBetListSettlementPolling();
+                } else if (reason === "after_draw_wait" || reason === "poll_settlement") {
+                    ensureRecentBetListSettlementPolling();
                 }
             } else if (jResult.status === "logout") {
                 location.reload();
             }
+        },
+        complete: function() {
+            m_recentBetsReqBusy = false;
         }
     });
 }
@@ -1059,8 +1076,10 @@ function fillSeniorRoundBetSummary(arrBetData) {
 
 function showRoundResult(objRound, arrBetData) {
     var drawComplete = objRound != null && parseInt(objRound.round_state, 10) === 1;
-    if (drawComplete) {
-        startRecentBetListSettlementPolling("after_showRoundResult_sync");
+    // 미추첨 재시도·회차 네비마다 pbrecentbets 치지 않음.
+    // 추첨 완료 + 해당 회차 bets에 대기만 있을 때 1회 조회(응답에 대기면 느슨한 정산 폴링).
+    if (drawComplete && recentBetsHaveWait(arrBetData) && !m_pbRecentBetsPollTimer) {
+        requestRecentBetList("after_draw_wait");
     }
     /*
     소  background: rgb(255, 193, 7); color:white; border:none;
@@ -1147,9 +1166,6 @@ function showRoundResult(objRound, arrBetData) {
 
     fillSeniorRoundLabel(objRound);
     fillSeniorResultCells(objRound);
-    if (!drawComplete) {
-        requestRecentBetList("after_showRoundResult");
-    }
 }
 
 function getBuyDetailEnd(nBetSum, nWinSum) {
