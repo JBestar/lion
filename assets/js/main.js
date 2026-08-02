@@ -26,6 +26,11 @@ var PB_BET_WIN = 3;
 var PB_BET_CANCEL = 4;
 /** 정산 반영까지 배팅 목록 주기 재조회 */
 var m_pbRecentBetsPollTimer = null;
+/** 느린 pbrecentbets 직후 폴링 쿨다운 (H1b 폭주 방지) */
+var m_pbRecentBetsPollBackoffUntil = 0;
+var PB_RECENT_POLL_MS = 12000;
+var PB_RECENT_POLL_MAX_TICKS = 15;
+var PB_RECENT_POLL_SLOW_MS = 3000;
 /** 당첨내역 메뉴: 좌측 배팅리스트에 적중(결과 확정) 행만 표시 */
 var m_betListWinsOnly = false;
 /** sess_list 유지 heartbeat (60초) */
@@ -47,10 +52,12 @@ var m_bgPollPhase = 0;
 /** 로컬 영수증 인쇄 중·대기열 (최신 1건만 유지) */
 var m_printReqBusy = false;
 var m_printPendingInfo = null;
-/** same-origin /api 동시 상한 (로컬 프린터 제외) — H1b 대기열 완화 */
-var LION_API_MAX_CONCURRENT = 2;
+/** same-origin /api 동시 상한 1 (로컬 프린터 제외) — H1b: 겹침 자체를 제거 */
+var LION_API_MAX_CONCURRENT = 1;
 var m_lionApiInFlight = 0;
 var m_lionApiQueue = [];
+/** pbroundresult 예약(잔액/회차와 겹치지 않게 미룸) */
+var m_scheduleRoundResultTimer = null;
 
 /** 회차·배팅 등 무거운 API가 돌 때 타이머 폴링 생략 */
 function isHeavyApiBusy() {
@@ -60,6 +67,19 @@ function isHeavyApiBusy() {
 /** 잔액/메시지/heartbeat 백그라운드 폴링 상호 배타 */
 function isBgSessionPollBusy() {
     return !!(m_heartbeatReqBusy || m_assetsReqBusy || m_recvMsgReqBusy);
+}
+
+/** 사이트 /api 트래픽이 하나라도 있으면 다른 폴링은 미룸 */
+function isAnySiteApiBusy() {
+    return isHeavyApiBusy() || isBgSessionPollBusy();
+}
+
+function scheduleRequestRoundResult(delayMs) {
+    if (m_scheduleRoundResultTimer) return;
+    m_scheduleRoundResultTimer = setTimeout(function() {
+        m_scheduleRoundResultTimer = null;
+        requestRoundResult();
+    }, delayMs == null ? 800 : delayMs);
 }
 
 function lionIsSiteApiUrl(url) {
@@ -907,7 +927,12 @@ function setRoundResult(nRoundId, reason) {
     }
 
     $("#buy-info-round-id").text(nRoundId);
-    requestRoundResult();
+    // 잔액/회차 목록과 동시 발사 금지 — 비면 즉시, 바쁘면 예약
+    if (isAnySiteApiBusy()) {
+        scheduleRequestRoundResult(1000);
+    } else {
+        requestRoundResult();
+    }
 }
 
 function formatRoundDisplay(roundFid, roundNo, suffix) {
@@ -1080,6 +1105,18 @@ function stopRecentBetListSettlementPolling() {
         clearInterval(m_pbRecentBetsPollTimer);
         m_pbRecentBetsPollTimer = null;
     }
+    m_pbRecentBetsPollBackoffUntil = 0;
+}
+
+function noteRecentBetsPollDuration(ms) {
+    if (!m_pbRecentBetsPollTimer) return;
+    if (ms < PB_RECENT_POLL_SLOW_MS) return;
+    // 대기만큼(최소 15초·최대 60초) 쿨다운 — 9→21→62초 폭주 차단
+    var cool = Math.min(60000, Math.max(15000, ms));
+    var until = Date.now() + cool;
+    if (until > m_pbRecentBetsPollBackoffUntil) {
+        m_pbRecentBetsPollBackoffUntil = until;
+    }
 }
 
 /** 추첨 직후 DB 정산이 늦을 때 목록만 새로고침 없이 따라가게 함. immediateReason 있으면 setInterval 전에 1회 즉시 호출 */
@@ -1090,16 +1127,16 @@ function startRecentBetListSettlementPolling(immediateReason) {
         requestRecentBetList(immediateReason);
     }
     var ticks = 0;
-    var maxTicks = 40;
     m_pbRecentBetsPollTimer = setInterval(function() {
         ticks++;
-        if (ticks > maxTicks) {
+        if (ticks > PB_RECENT_POLL_MAX_TICKS) {
             stopRecentBetListSettlementPolling();
             return;
         }
-        if (m_betSubmitBusy || m_roundResultReqBusy || m_currentRoundReqBusy) return;
+        if (Date.now() < m_pbRecentBetsPollBackoffUntil) return;
+        if (isAnySiteApiBusy()) return;
         requestRecentBetList("poll_settlement");
-    }, 3000);
+    }, PB_RECENT_POLL_MS);
 }
 
 function updateSeniorCurBetDisplays(arrBetData) {
@@ -1139,13 +1176,28 @@ function requestRecentBetList(reason, onDone) {
         }
         return;
     }
+    // assets/결과/현재회차와 겹치지 않음 (배팅 성공 파이프라인은 예외)
+    if (reason !== "after_bet_success" && (isBgSessionPollBusy() || m_roundResultReqBusy || m_currentRoundReqBusy)) {
+        if (typeof onDone === "function") {
+            setTimeout(function() { requestRecentBetList(reason, onDone); }, 400);
+        }
+        return;
+    }
     if (m_recentBetsReqBusy) {
         if (typeof onDone === "function") {
             setTimeout(function() { requestRecentBetList(reason, onDone); }, 200);
         }
         return;
     }
+    // 쿨다운 중이면 정산 폴링·회차 유발 목록은 생략 (배팅 성공 파이프라인만 허용)
+    if (reason !== "after_bet_success" && Date.now() < m_pbRecentBetsPollBackoffUntil) {
+        if (typeof onDone === "function") {
+            setTimeout(function() { requestRecentBetList(reason, onDone); }, 500);
+        }
+        return;
+    }
     m_recentBetsReqBusy = true;
+    var reqT0 = (window.performance && performance.now) ? performance.now() : Date.now();
     var objData = { game: gid, limit: 80 };
     $.ajax({
         type: "POST",
@@ -1174,6 +1226,8 @@ function requestRecentBetList(reason, onDone) {
             }
         },
         complete: function() {
+            var reqT1 = (window.performance && performance.now) ? performance.now() : Date.now();
+            noteRecentBetsPollDuration(Math.round(reqT1 - reqT0));
             m_recentBetsReqBusy = false;
             if (typeof onDone === "function") onDone();
         }
@@ -1638,10 +1692,14 @@ function requestMemberInfo() {
 }
 
 function requestAmountInfo(onDone) {
-    if (m_assetsReqBusy || m_heartbeatReqBusy) {
+    if (m_assetsReqBusy || m_heartbeatReqBusy || (isHeavyApiBusy() && typeof onDone !== "function")) {
         if (typeof onDone === "function") {
             setTimeout(function() { requestAmountInfo(onDone); }, 200);
         }
+        return;
+    }
+    if (isHeavyApiBusy() && typeof onDone === "function") {
+        setTimeout(function() { requestAmountInfo(onDone); }, 200);
         return;
     }
     m_assetsReqBusy = true;
@@ -1701,9 +1759,9 @@ function scheduleRequestCurrentRound(delayMs) {
 
 function requestCurrentRound() {
     if (m_currentRoundReqBusy) return;
-    // 배팅/결과/목록 진행 중에는 회차 폴링을 미뤄 서버 앞단 대기열을 키우지 않음
-    if (m_betSubmitBusy || m_roundResultReqBusy) {
-        scheduleRequestCurrentRound(2000);
+    // 배팅/결과/목록/잔액 진행 중에는 회차 폴링을 미룸
+    if (m_betSubmitBusy || m_roundResultReqBusy || m_recentBetsReqBusy || isBgSessionPollBusy()) {
+        scheduleRequestCurrentRound(2500);
         return;
     }
     m_currentRoundReqBusy = true;
@@ -1718,12 +1776,12 @@ function requestCurrentRound() {
         success: function(jResult) {
             if (jResult.status == "success") {
                 if (setCurrentRound(jResult.data)) {
-                    // 회차 갱신 직후 즉시 목록 조회하면 다른 XHR 과 슬롯 경쟁 — 짧게 미룸
+                    // 목록은 현재회차 완료 후 충분히 늦게 (동시 inFlight 방지)
                     setTimeout(function() {
-                        if (!m_betSubmitBusy) {
+                        if (!m_betSubmitBusy && !isBgSessionPollBusy() && !m_roundResultReqBusy) {
                             requestRecentBetList("after_pbcurrentgame_setRound");
                         }
-                    }, 400);
+                    }, 1200);
                 }
 
             } else if (jResult.status == "logout") {
@@ -1752,6 +1810,10 @@ function requestRoundResult() {
     var nRoundId = $("#buy-info-round-id").text();
     if (nRoundId.length < 1) return;
     if (m_roundResultReqBusy) return;
+    if (isBgSessionPollBusy() || m_currentRoundReqBusy || m_recentBetsReqBusy || m_betSubmitBusy) {
+        scheduleRequestRoundResult(1000);
+        return;
+    }
     m_roundResultReqBusy = true;
 
     var nDate = $("#buy-info-round-id").attr("name");
@@ -1776,7 +1838,7 @@ function requestRoundResult() {
                     m_pbRoundResultRetryTimer = setTimeout(function() {
                         m_pbRoundResultRetryTimer = null;
                         requestRoundResult();
-                    }, 1500);
+                    }, 3000);
                 } else {
                     m_pbRoundResultRetryCount = 0;
                     if (m_pbRoundResultRetryTimer) {
@@ -2348,11 +2410,11 @@ function showTime() {
     }
 
     let nCurSec = tmCurrent.getSeconds();
-    // 4초마다 assets+메시지를 동시에 쏘지 않음 — 슬롯 포화(H1b) 방지
-    if (nCurSec % 4 == 0) {
-        if (!isHeavyApiBusy() && !isBgSessionPollBusy()) {
+    // 8초마다 잔액/메시지 중 1개만 (회차 API와 겹치면 스킵)
+    if (nCurSec % 8 == 0) {
+        if (!isAnySiteApiBusy()) {
             m_bgPollPhase++;
-            // 3틱 중 2회 잔액, 1회 메시지 (~12초마다 메시지)
+            // 3틱 중 2회 잔액, 1회 메시지 (~24초마다 메시지)
             if (m_bgPollPhase % 3 === 0) {
                 requestRecvMessage();
             } else {
@@ -2405,9 +2467,11 @@ function showTime() {
     //회차결과현시
 
 
-    //회차요청 — 매초 setTimeout 쌓지 않고 1건만 예약
+    //회차요청 — 매초 setTimeout 쌓지 않고 1건만 예약 (다른 API 바쁠 때는 schedule 안 함)
     if (m_iRoundErrorCnt < 20 && m_objRound.round_current >= m_objRound.round_end - 3000 && m_objRound.round_current < m_objRound.round_end + 600000) {
-        scheduleRequestCurrentRound(2000);
+        if (!isAnySiteApiBusy()) {
+            scheduleRequestCurrentRound(2500);
+        }
     }
 
     syncBetLockOverlay();
