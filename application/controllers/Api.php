@@ -3,99 +3,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Api extends CI_Controller {
 
-	public function __construct()
-	{
-		parent::__construct();
-		// CI가 세션을 연 직후·액션 DB 작업 전에 PHP 세션 락(GET_LOCK) 해제.
-		// 같은 탭 병렬 /api 가 서로 줄 서지 않게 함. login 만 세션 쓰기 때문에 제외.
-		$this->maybeReleaseSessionLockEarly();
-	}
-
 	public function index()
 	{
 
-	}
-
-	/**
-	 * PHP 세션 락 해제 — session_write_close() → DB 세션 드라이버 RELEASE_LOCK.
-	 * $_SESSION 배열은 메모리에 남아 읽기(is_login) 가능. 이후 set_userdata/sess_destroy 금지.
-	 */
-	private function unlockPhpSession()
-	{
-		if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
-			@session_write_close();
-		}
-	}
-
-	/** login/index 제외 모든 Api 액션: 생성자에서 즉시 락 해제 */
-	private function maybeReleaseSessionLockEarly()
-	{
-		$method = '';
-		if (isset($this->router) && is_object($this->router) && !empty($this->router->method)) {
-			$method = (string) $this->router->method;
-		}
-		if ($method === '' || $method === 'login' || $method === 'index') {
-			return;
-		}
-		$this->unlockPhpSession();
-	}
-
-	/**
-	 * API 지연 원인 확정용 계측 (동작 변경 없음). logs/날짜 파일에 ApiDiag START/END.
-	 * 대상: assets, heartbeat, getRecvNewMessage, betting, pbcurrentgame, pbrecentbets, pbroundresult
-	 * 클라 [XHR-] duration 과 START req_age_ms / END total_ms 를 짝지어 비교.
-	 * - req_age_ms ≈ 클라 duration, total_ms 작음 → H1a (PHP 세션 GET_LOCK/부트스트랩 대기)
-	 * - req_age_ms 작음, 클라만 김 → H1b (PHP 시작 전: 워커/브라우저 Stalled)
-	 * - total_ms 김 → H2/H3 (컨트롤러·DB; after_login_ms/after_db_ms 로 구간 분리)
-	 * 세션: 생성자에서 login 제외 즉시 unlock. GET_LOCK 대기는 MY_Session_database_driver 5초.
-	 */
-	private function apiDiagBegin($api, $nLogId)
-	{
-		$t0 = microtime(true);
-		$rid = substr(str_replace('.', '', uniqid('', true)), -10);
-		$reqAgeMs = -1;
-		if (isset($_SERVER['REQUEST_TIME_FLOAT'])) {
-			$reqAgeMs = (int) round(($t0 - (float) $_SERVER['REQUEST_TIME_FLOAT']) * 1000);
-			if ($reqAgeMs < 0) {
-				$reqAgeMs = 0;
-			}
-		}
-		writeLog('ApiDiag START api='.$api.' l='.$nLogId.' rid='.$rid.' req_age_ms='.$reqAgeMs);
-		return array(
-			'api' => $api,
-			'l' => $nLogId,
-			'rid' => $rid,
-			't0' => $t0,
-			'req_age_ms' => $reqAgeMs,
-			'marks' => array()
-		);
-	}
-
-	private function apiDiagMark(&$ctx, $name)
-	{
-		if (!is_array($ctx) || !isset($ctx['t0'])) {
-			return;
-		}
-		$ctx['marks'][$name] = (int) round((microtime(true) - $ctx['t0']) * 1000);
-	}
-
-	private function apiDiagEnd(&$ctx, $status)
-	{
-		if (!is_array($ctx) || !isset($ctx['t0'])) {
-			return;
-		}
-		$total = (int) round((microtime(true) - $ctx['t0']) * 1000);
-		$parts = array();
-		if (isset($ctx['req_age_ms'])) {
-			$parts[] = 'req_age_ms='.$ctx['req_age_ms'];
-		}
-		if (!empty($ctx['marks']) && is_array($ctx['marks'])) {
-			foreach ($ctx['marks'] as $k => $v) {
-				$parts[] = $k.'='.$v;
-			}
-		}
-		$extra = count($parts) ? (' '.implode(' ', $parts)) : '';
-		writeLog('ApiDiag END api='.$ctx['api'].' l='.$ctx['l'].' rid='.$ctx['rid'].' status='.$status.' total_ms='.$total.$extra);
 	}
 
 	//사용자 로그인
@@ -161,8 +71,6 @@ class Api extends CI_Controller {
 					//세션 생성
 					$sessData = array('username' => $objUser->mb_uid, 'logged_in'=>TRUE, 'user_level'=>MEMBER_EMPLOYEE_LEVEL);
 					$this->session->set_userdata($sessData);
-					// 세션 기록 후 즉시 락 해제 (응답·추가 DB 동안 다른 AJAX가 기다리지 않게)
-					$this->unlockPhpSession();
 					$this->member_model->updateLogin($objUser);
 					$this->loghist_model->addLog($objUser, 1);
 
@@ -177,14 +85,13 @@ class Api extends CI_Controller {
 					writeLog($logHead . "FAIL session ip=" . $this->input->ip_address() . " uid=" . $objUser->mb_uid . " bNeedLog=" . ($bNeedLog ? '1' : '0') . " nLogId=" . $nLogId . " (code5=다른IP세션등)");
 					$arrResult['status'] = "fail";
 					$arrResult['code'] = 5;		//1-성공 2-계정틀림 4-재가입 5-중복
-					$this->unlockPhpSession();
+				
 				}
 				
 			} 			
 		}
 		
-		// 실패 분기 등에서 아직 락이 남아 있으면 해제
-		$this->unlockPhpSession();
+
 		echo json_encode($arrResult);
 
 	}
@@ -192,14 +99,9 @@ class Api extends CI_Controller {
 	//사용자정보
 	public function assets(){ 
 		
-		$nLogId = trim($this->input->get('l'));
-		$diag = $this->apiDiagBegin('assets', $nLogId);
-		// 생성자에서 이미 unlock. 진단용 마크만 유지(재호출은 no-op).
-		$this->unlockPhpSession();
-		$this->apiDiagMark($diag, 'after_unlock_ms');
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
 		{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			//model
 			$this->load->model('member_model');
 			$this->load->model('confsite_model');
@@ -208,7 +110,6 @@ class Api extends CI_Controller {
 			$objUser = $this->member_model->getInfoByUid($strUid);
 			
 			$objMaintain = $this->confsite_model->getMaintain();
-			$this->apiDiagMark($diag, 'after_db_ms');
 
 			$bIsAlive = false;
 			if(!is_null($objUser) && !is_null($objMaintain)){	
@@ -230,38 +131,27 @@ class Api extends CI_Controller {
 			}
 
 			echo json_encode($objResult);
-			$this->apiDiagEnd($diag, $objResult->status);
 		}
 		else {
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, 'logout');
+			echo json_encode($arrResult);	
 		}
 	}
 
-	/** 세션 유지(heartbeat) — sess_list 갱신(DB). PHP 세션 락은 생성자에서 이미 해제 */
+	/** 세션 유지(heartbeat) — is_login()으로 sess_update_time 갱신 */
 	public function heartbeat(){
 		$nLogId = trim($this->input->get('l'));
-		$diag = $this->apiDiagBegin('heartbeat', $nLogId);
-		$this->unlockPhpSession();
-		$this->apiDiagMark($diag, 'after_unlock_ms');
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)){
-			$this->apiDiagMark($diag, 'after_login_ms');
 			echo json_encode(array('status' => 'success'));
-			$this->apiDiagEnd($diag, 'success');
 		} else {
-			$this->apiDiagMark($diag, 'after_login_ms');
 			echo json_encode(array('status' => 'logout'));
-			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 
 	//사용자정보
 	public function session(){ 
 	
-		$nLogId = trim($this->input->get('l'));
-		$this->unlockPhpSession();
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
 		{
 			//model
@@ -305,8 +195,7 @@ class Api extends CI_Controller {
 		$jsonData = $_REQUEST['json_'];
 		$arrGetData = json_decode($jsonData, true);
 		
-		$nLogId = trim($this->input->get('l'));
-		$this->unlockPhpSession();
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{	
 			//model
@@ -332,13 +221,9 @@ class Api extends CI_Controller {
 		$jsonData = $_REQUEST['json_'];
 		$arrRaData = json_decode($jsonData, true);
 
-		$nLogId = trim($this->input->get('l'));
-		$diag = $this->apiDiagBegin('pbcurrentgame', $nLogId);
-		$this->unlockPhpSession();
-		$this->apiDiagMark($diag, 'after_unlock_ms');
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$gameId = intval($arrRaData['game']);
 
 			//model
@@ -387,16 +272,12 @@ class Api extends CI_Controller {
 				$arrResult['data'] = $arrRoundData;
 				$arrResult['status'] = "success";
 			}
-
-			$this->apiDiagMark($diag, 'after_db_ms');
+			
 			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, isset($arrResult['status']) ? $arrResult['status'] : 'ok');
 		}
 		else{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, 'logout');
+			echo json_encode($arrResult);	
 		}
 	}
 
@@ -405,13 +286,9 @@ class Api extends CI_Controller {
 		$jsonData = $_REQUEST['json_'];
 		$arrBetData = json_decode($jsonData, true);
 		
-		$nLogId = trim($this->input->get('l'));
-		$diag = $this->apiDiagBegin('betting', $nLogId);
-		$this->unlockPhpSession();
-		$this->apiDiagMark($diag, 'after_unlock_ms');
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->load->model('member_model');
 			$this->load->model('confgame_model');
 			$this->load->model('confsite_model');
@@ -565,15 +442,12 @@ class Api extends CI_Controller {
 				$arrResult['status'] = "fail";
 				$arrResult['data'] = $iResult;
 			}
-			$this->apiDiagMark($diag, 'after_db_ms');
 			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, $arrResult['status']);
 		}
 		else{//logout		
-			$this->apiDiagMark($diag, 'after_login_ms');
+			
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, 'logout');
+			echo json_encode($arrResult);	
 		}
 
 
@@ -586,8 +460,7 @@ class Api extends CI_Controller {
 		$jsonData = isset($_REQUEST['json_']) ? $_REQUEST['json_'] : '';
 		$arrReqData = is_string($jsonData) ? json_decode($jsonData, true) : null;
 		
-		$nLogId = trim($this->input->get('l'));
-		$this->unlockPhpSession();
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) {
 			$this->load->model('member_model');
 			$this->load->model('confgame_model');
@@ -796,12 +669,8 @@ class Api extends CI_Controller {
 		$arrReqData = json_decode($jsonData, true);
 
 		$nLogId = trim($this->input->get('l'));
-		$diag = $this->apiDiagBegin('pbrecentbets', $nLogId);
-		$this->unlockPhpSession();
-		$this->apiDiagMark($diag, 'after_unlock_ms');
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL))
 		{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->load->model('member_model');
 			$this->load->model('pbbet_model');
 
@@ -813,19 +682,15 @@ class Api extends CI_Controller {
 			}
 
 			$arrBets = $this->pbbet_model->getByUserId($strUid, $nLimit, $nGameId);
-			$this->apiDiagMark($diag, 'after_db_ms');
 
 			$objResult = new StdClass;
 			$objResult->bets = $arrBets;
 			$objResult->status = "success";
 
 			echo json_encode($objResult);
-			$this->apiDiagEnd($diag, 'success');
 		} else {
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
 			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, 'logout');
 		}
 	}
 
@@ -836,13 +701,9 @@ class Api extends CI_Controller {
 			$arrReqData = array();
 		}
 
-		$nLogId = trim($this->input->get('l'));
-		$diag = $this->apiDiagBegin('pbroundresult', $nLogId);
-		$this->unlockPhpSession();
-		$this->apiDiagMark($diag, 'after_unlock_ms');
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$this->load->model('member_model');	
 			$this->load->model('pbround_model');
 			$this->load->model('pbbet_model');	
@@ -888,19 +749,15 @@ class Api extends CI_Controller {
 				}
 			}
 
-			$this->apiDiagMark($diag, 'after_db_ms');
 			$objResult = new StdClass;
 			$objResult->round = $objRound;		
 			$objResult->bets = $arrBetData;		
 			$objResult->status = "success";
 			echo json_encode($objResult);
-			$this->apiDiagEnd($diag, 'success');
 
 		} else{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
-			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, 'logout');
+			echo json_encode($arrResult);	
 		}
 	}
 
@@ -1362,13 +1219,10 @@ class Api extends CI_Controller {
 
 	public function getRecvNewMessage(){
 		
-		$nLogId = trim($this->input->get('l'));
-		$diag = $this->apiDiagBegin('getRecvNewMessage', $nLogId);
-		$this->unlockPhpSession();
-		$this->apiDiagMark($diag, 'after_unlock_ms');
+		$nLogId = trim($this->input->get('l'));		
 		if(is_login() && $this->sess_model->is_login($nLogId, MEMBER_EMPLOYEE_LEVEL)) 
 		{
-			$this->apiDiagMark($diag, 'after_login_ms');
+			
 			//model
 			$this->load->model('member_model');	
 			$this->load->model('message_model');
@@ -1376,21 +1230,17 @@ class Api extends CI_Controller {
 			$objUser = $this->member_model->getInfoByUid($strUid);	
 
 			$arrMessage = $this->message_model->getRecvMessage($objUser, 1);
-			$this->apiDiagMark($diag, 'after_db_ms');
 
 			$objResult = new StdClass;
 			$objResult->data = $arrMessage;		
 			$objResult->status = "success";
 		
 			echo json_encode($objResult);
-			$this->apiDiagEnd($diag, 'success');
 
 		} else{
-			$this->apiDiagMark($diag, 'after_login_ms');
 			$arrResult['status'] = "logout";
 
-			echo json_encode($arrResult);
-			$this->apiDiagEnd($diag, 'logout');
+			echo json_encode($arrResult);	
 		}
 	}
 		
