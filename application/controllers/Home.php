@@ -3,6 +3,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Home extends CI_Controller {
 
+	public function __construct()
+	{
+		parent::__construct();
+		// 뷰만 렌더 — 세션 쓰기 없음. 락 유지 시 같은 쿠키의 /api 폴링이 대기함.
+		if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
+			@session_write_close();
+		}
+	}
+
     public function index()
 	{
 

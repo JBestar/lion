@@ -3,6 +3,25 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class CApi extends CI_Controller {
 
+	public function __construct()
+	{
+		parent::__construct();
+		$method = (isset($this->router) && is_object($this->router) && !empty($this->router->method))
+			? (string) $this->router->method : '';
+		// login / roundstatunlock 은 $_SESSION 쓰기 필요 — 락 유지
+		$keepLock = array('login', 'index', 'roundstatunlock');
+		if ($method !== '' && !in_array($method, $keepLock, true)) {
+			$this->unlockPhpSession();
+		}
+	}
+
+	private function unlockPhpSession()
+	{
+		if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
+			@session_write_close();
+		}
+	}
+
 	public function index()
 	{
 		
@@ -60,6 +79,7 @@ class CApi extends CI_Controller {
 					//세션 생성
 					$sessData = array('username' => $objUser->mb_uid, 'logged_in'=>TRUE, 'user_level'=>MEMBER_COMPANY_LEVEL);
 					$this->session->set_userdata($sessData);
+					$this->unlockPhpSession();
 					$this->member_model->updateLogin($objUser);
 					$this->loghist_model->addLog($objUser, 1);	
 					
@@ -86,6 +106,7 @@ class CApi extends CI_Controller {
 				$arrResult['status'] = "fail";
 		}
 
+		$this->unlockPhpSession();
 		echo json_encode($arrResult);
 
 	}
@@ -1496,6 +1517,7 @@ class CApi extends CI_Controller {
 		$dbPwd = $this->confsite_model->getRoundStatPassword();
 		if(strcmp((string) $arr['pwd'], $dbPwd) === 0){
 			$this->session->set_userdata('adm_roundstat_ok', 1);
+			$this->unlockPhpSession();
 			/* 정답 입력 시 누적 실패/블록 모두 초기화 */
 			if($uid !== ''){
 				$this->clearRoundstatUnlockBlock('uid', $uid);
@@ -1523,6 +1545,7 @@ class CApi extends CI_Controller {
 				$this->session->unset_userdata('logged_in');
 				$this->session->unset_userdata('user_level');
 				$this->session->unset_userdata('username');
+				$this->unlockPhpSession();
 				echo json_encode(array('status' => 'logout', 'data' => 4, 'remain_attempts' => 0));
 				return;
 			}

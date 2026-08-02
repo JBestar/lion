@@ -3,6 +3,23 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class BApi extends CI_Controller {
 
+	public function __construct()
+	{
+		parent::__construct();
+		$method = (isset($this->router) && is_object($this->router) && !empty($this->router->method))
+			? (string) $this->router->method : '';
+		if ($method !== '' && $method !== 'login' && $method !== 'index') {
+			$this->unlockPhpSession();
+		}
+	}
+
+	private function unlockPhpSession()
+	{
+		if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
+			@session_write_close();
+		}
+	}
+
 	public function index()
 	{
 
@@ -66,6 +83,7 @@ class BApi extends CI_Controller {
 					//세션 생성
 					$sessData = array('username' => $objUser->mb_uid, 'logged_in'=>TRUE, 'user_level'=>MEMBER_AGENCY_LEVEL);
 					$this->session->set_userdata($sessData);
+					$this->unlockPhpSession();
 					$this->member_model->updateLogin($objUser);
 					$this->loghist_model->addLog($objUser, 1);
 					
@@ -96,6 +114,7 @@ class BApi extends CI_Controller {
 				$arrResult['status'] = "fail";
 		}
 
+		$this->unlockPhpSession();
 		echo json_encode($arrResult);
 
 	}

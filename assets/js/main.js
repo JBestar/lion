@@ -52,8 +52,15 @@ var m_bgPollPhase = 0;
 /** 로컬 영수증 인쇄 중·대기열 (최신 1건만 유지) */
 var m_printReqBusy = false;
 var m_printPendingInfo = null;
-/** same-origin /api 동시 상한 1 (로컬 프린터 제외) — H1b: 겹침 자체를 제거 */
-var LION_API_MAX_CONCURRENT = 1;
+/**
+ * same-origin /api 동시 상한 (로컬 프린터 제외).
+ * 1이면 한 건이 브라우저 Stalled 일 때 배팅까지 전부 줄 서서 렉이 증폭됨 → 2.
+ */
+var LION_API_MAX_CONCURRENT = 2;
+/** 읽기 API가 Stalled/무응답일 때 abort 후 1회 재시도 (배팅 등 쓰기 API는 제외) */
+var LION_API_STALL_MS = 10000;
+/** 배팅 응답 대기 상한 — 초과 시 abort·busy 해제만 (자동 재시도 없음: 중복배팅 방지) */
+var LION_BET_STALL_MS = 15000;
 var m_lionApiInFlight = 0;
 var m_lionApiQueue = [];
 /** pbroundresult 예약(잔액/회차와 겹치지 않게 미룸) */
@@ -74,6 +81,88 @@ function isAnySiteApiBusy() {
     return isHeavyApiBusy() || isBgSessionPollBusy();
 }
 
+/**
+ * H1b A/B용 폴링 킬스위치 (콘솔, 새로고침 없이 즉시 반영).
+ * - LION_POLL_OFF = true           → 백그라운드 폴링 전부 OFF
+ * - LION_POLL_ASSETS = false       → 잔액(/api/assets) 타이머 OFF
+ * - LION_POLL_MESSAGE = false      → 쪽지(/api/getRecvNewMessage) 타이머 OFF
+ * - LION_POLL_HEARTBEAT = false    → heartbeat OFF
+ * - LION_POLL_SETTLEMENT = false   → 정산 목록 pbrecentbets 폴링 OFF
+ * - LION_POLL_ROUND = false        → 타이머 회차 pbcurrentgame/pbroundresult OFF
+ * - LION_POLL_DIAG = true          → 스킵 시 [POLL skip] 로그
+ * 헬퍼: lionPollHelp() / lionPollStatus() / lionPollSet({ assets:false, settlement:false })
+ */
+function lionPollMasterOff() {
+    return window.LION_POLL_OFF === true;
+}
+
+function lionPollFlagEnabled(name, defaultOn) {
+    if (lionPollMasterOff()) return false;
+    var v = window[name];
+    if (v === false || v === 0 || v === "0") return false;
+    if (v === true || v === 1 || v === "1") return true;
+    return defaultOn !== false;
+}
+
+function lionPollAssetsEnabled() { return lionPollFlagEnabled("LION_POLL_ASSETS", true); }
+function lionPollMessageEnabled() { return lionPollFlagEnabled("LION_POLL_MESSAGE", true); }
+function lionPollHeartbeatEnabled() { return lionPollFlagEnabled("LION_POLL_HEARTBEAT", true); }
+function lionPollSettlementEnabled() { return lionPollFlagEnabled("LION_POLL_SETTLEMENT", true); }
+function lionPollRoundEnabled() { return lionPollFlagEnabled("LION_POLL_ROUND", true); }
+
+function lionPollLogSkip(kind) {
+    if (window.LION_POLL_DIAG === true && typeof console !== "undefined" && console.log) {
+        console.log("[POLL skip] " + kind);
+    }
+}
+
+function lionPollStatus() {
+    var st = {
+        LION_POLL_OFF: lionPollMasterOff(),
+        assets: lionPollAssetsEnabled(),
+        message: lionPollMessageEnabled(),
+        heartbeat: lionPollHeartbeatEnabled(),
+        settlement: lionPollSettlementEnabled(),
+        round: lionPollRoundEnabled(),
+        diag: window.LION_POLL_DIAG === true
+    };
+    if (typeof console !== "undefined" && console.log) {
+        console.log("[POLL status]", st);
+    }
+    return st;
+}
+
+function lionPollSet(opts) {
+    opts = opts || {};
+    if (opts.off === true || opts.all === false) window.LION_POLL_OFF = true;
+    if (opts.off === false || opts.all === true) window.LION_POLL_OFF = false;
+    if (opts.assets != null) window.LION_POLL_ASSETS = !!opts.assets;
+    if (opts.message != null) window.LION_POLL_MESSAGE = !!opts.message;
+    if (opts.heartbeat != null) window.LION_POLL_HEARTBEAT = !!opts.heartbeat;
+    if (opts.settlement != null) window.LION_POLL_SETTLEMENT = !!opts.settlement;
+    if (opts.round != null) window.LION_POLL_ROUND = !!opts.round;
+    if (opts.diag != null) window.LION_POLL_DIAG = !!opts.diag;
+    if (opts.settlement === false) stopRecentBetListSettlementPolling();
+    return lionPollStatus();
+}
+
+function lionPollHelp() {
+    var msg = [
+        "H1b A/B 폴링 스위치:",
+        "  lionPollSet({ off:true })              // 백그라운드 전부 OFF",
+        "  lionPollSet({ settlement:false })      // 정산 pbrecentbets만 OFF",
+        "  lionPollSet({ assets:false, message:false })",
+        "  lionPollSet({ round:false })           // 타이머 회차 API OFF",
+        "  lionPollSet({ heartbeat:false })",
+        "  lionPollSet({ diag:true })             // [POLL skip] 로그 ON",
+        "  lionPollSet({ off:false, assets:true, message:true, settlement:true, round:true, heartbeat:true })",
+        "  lionPollStatus()",
+        "배팅/수동 회차이동/배팅성공 목록은 OFF여도 동작합니다."
+    ].join("\n");
+    if (typeof console !== "undefined" && console.log) console.log(msg);
+    return msg;
+}
+
 function scheduleRequestRoundResult(delayMs) {
     if (m_scheduleRoundResultTimer) return;
     m_scheduleRoundResultTimer = setTimeout(function() {
@@ -89,9 +178,23 @@ function lionIsSiteApiUrl(url) {
     return /\/api\//i.test(u);
 }
 
-function lionApiGatePriority(url) {
+/** 배팅/취소는 게이트 줄 뒤에 서지 않음 (폴링 Stalled에 묶이지 않게) */
+function lionApiGateBypass(url) {
     var label = xhrDiagLabel(url);
-    return label === "betting" ? 1 : 0;
+    return label === "betting" || label === "bet_cancel";
+}
+
+/** Stalled abort+1회 재시도 허용 — 읽기 전용만 (쓰기/결제성 제외 → 중복 처리 방지) */
+function lionApiAllowStallRetry(url) {
+    var label = xhrDiagLabel(url);
+    return label === "assets" ||
+        label === "heartbeat" ||
+        label === "getRecvNewMessage" ||
+        label === "getRecvMessage" ||
+        label === "pbcurrentgame" ||
+        label === "pbroundresult" ||
+        label === "pbrecentbets" ||
+        label === "getconfgame";
 }
 
 function pumpLionApiGate() {
@@ -99,6 +202,14 @@ function pumpLionApiGate() {
         var next = m_lionApiQueue.shift();
         if (next) next.run();
     }
+}
+
+/** 배팅 시작 시 줄 선 읽기 폴링 제거 — 이미 in-flight 인 건 stall 타이머가 정리 */
+function lionApiPurgeQueuedBackground() {
+    if (!m_lionApiQueue.length) return;
+    m_lionApiQueue = m_lionApiQueue.filter(function(entry) {
+        return !entry.purgeable;
+    });
 }
 
 function installLionApiGate() {
@@ -116,50 +227,89 @@ function installLionApiGate() {
         if (!lionIsSiteApiUrl(options.url)) {
             return origAjax.call($, options);
         }
+        // 배팅/취소: 게이트 밖 — 폴링 1건 Stalled 에 묶여 pending 되지 않게
+        if (lionApiGateBypass(options.url)) {
+            return origAjax.call($, options);
+        }
 
         var deferred = $.Deferred();
-        var aborted = false;
+        var userAborted = false;
         var started = false;
         var realXhr = null;
+        var slotReleased = false;
+
+        function releaseSlot() {
+            if (slotReleased) return;
+            slotReleased = true;
+            m_lionApiInFlight = Math.max(0, m_lionApiInFlight - 1);
+            pumpLionApiGate();
+        }
+
         var entry = {
-            priority: lionApiGatePriority(options.url),
+            purgeable: lionApiAllowStallRetry(options.url),
             run: function() {
-                if (aborted) {
+                if (userAborted) {
                     pumpLionApiGate();
                     return;
                 }
                 started = true;
                 m_lionApiInFlight++;
-                realXhr = origAjax.call($, options);
-                realXhr.done(function() {
-                    deferred.resolveWith(this, arguments);
-                });
-                realXhr.fail(function() {
-                    deferred.rejectWith(this, arguments);
-                });
-                realXhr.always(function() {
-                    m_lionApiInFlight = Math.max(0, m_lionApiInFlight - 1);
-                    pumpLionApiGate();
-                });
+                slotReleased = false;
+
+                function fire(isRetry) {
+                    if (userAborted) {
+                        releaseSlot();
+                        deferred.reject({}, "abort", "abort");
+                        return;
+                    }
+                    var xhr = origAjax.call($, options);
+                    realXhr = xhr;
+                    var didStallAbort = false;
+                    var stallTimer = null;
+                    if (lionApiAllowStallRetry(options.url) && !isRetry) {
+                        stallTimer = setTimeout(function() {
+                            didStallAbort = true;
+                            try {
+                                if (xhr && typeof xhr.abort === "function") xhr.abort();
+                            } catch (e) { /* ignore */ }
+                        }, LION_API_STALL_MS);
+                    }
+                    xhr.done(function() {
+                        if (stallTimer) clearTimeout(stallTimer);
+                        deferred.resolveWith(this, arguments);
+                    });
+                    xhr.fail(function() {
+                        if (stallTimer) clearTimeout(stallTimer);
+                        if (didStallAbort && !isRetry && !userAborted) {
+                            fire(true);
+                            return;
+                        }
+                        deferred.rejectWith(this, arguments);
+                    });
+                    xhr.always(function() {
+                        if (didStallAbort && !isRetry && !userAborted) {
+                            // 재시도 fire() 예정 — 슬롯 유지
+                            return;
+                        }
+                        releaseSlot();
+                    });
+                }
+                fire(false);
             }
         };
 
-        if (entry.priority > 0) {
-            m_lionApiQueue.unshift(entry);
-        } else {
-            m_lionApiQueue.push(entry);
-        }
+        m_lionApiQueue.push(entry);
         pumpLionApiGate();
 
         var promise = deferred.promise(realXhr || {});
         promise.abort = function() {
-            aborted = true;
+            userAborted = true;
             if (!started) {
                 var qi = m_lionApiQueue.indexOf(entry);
                 if (qi >= 0) m_lionApiQueue.splice(qi, 1);
             }
             if (realXhr && typeof realXhr.abort === "function") {
-                realXhr.abort();
+                try { realXhr.abort(); } catch (e) { /* ignore */ }
             }
             deferred.reject(realXhr || {}, "abort", "abort");
         };
@@ -186,14 +336,15 @@ function runAfterBetSuccessPipeline(printInfo) {
 
 /**
  * XHR 동시성 진단 로그 (F12 Console 필터: XHR)
- * - 기본 ON. 끄려면: window.LION_XHR_DIAG = false 후 새로고침
+ * - 기본 OFF (DevTools console.log 가 응답 순간 UI 버벅임 유발 가능).
+ * - 켜려면: window.LION_XHR_DIAG = true 후 새로고침
  * - inFlight>=6 인데 duration이 길면 브라우저 연결 슬롯 포화(Stalled) 가설
  * - inFlight가 적은데 duration만 길면 서버 Waiting 가설
  */
 var m_xhrInFlight = [];
 
 function xhrDiagEnabled() {
-    return window.LION_XHR_DIAG !== false;
+    return window.LION_XHR_DIAG === true;
 }
 
 function xhrDiagLabel(url) {
@@ -257,12 +408,18 @@ function installXhrDiag() {
         console.log("[XHR dump] inFlight=" + m_xhrInFlight.length + " [" + xhrDiagInFlightNames().join(", ") + "]", m_xhrInFlight.slice());
         return m_xhrInFlight.length;
     };
+    window.lionPollHelp = lionPollHelp;
+    window.lionPollStatus = lionPollStatus;
+    window.lionPollSet = lionPollSet;
 }
 
 $(document).ready(function() {
 
     installLionApiGate();
     installXhrDiag();
+    if (typeof console !== "undefined" && console.log) {
+        console.log("[POLL] A/B: lionPollHelp() 로 사용법 확인");
+    }
 
     m_objRound.game = 0;
     m_objRound.round_no = 0;
@@ -927,6 +1084,11 @@ function setRoundResult(nRoundId, reason) {
     }
 
     $("#buy-info-round-id").text(nRoundId);
+    // 타이머 유발 회차결과는 A/B 스위치로 끌 수 있음 (수동 nav 는 유지)
+    if (reason && String(reason).indexOf("timer_") === 0 && !lionPollRoundEnabled()) {
+        lionPollLogSkip("pbroundresult " + reason);
+        return;
+    }
     // 잔액/회차 목록과 동시 발사 금지 — 비면 즉시, 바쁘면 예약
     if (isAnySiteApiBusy()) {
         scheduleRequestRoundResult(1000);
@@ -1123,6 +1285,10 @@ function noteRecentBetsPollDuration(ms) {
 function startRecentBetListSettlementPolling(immediateReason) {
     if (getGameId() < 0) return;
     stopRecentBetListSettlementPolling();
+    if (!lionPollSettlementEnabled()) {
+        lionPollLogSkip("settlement_poll_start");
+        return;
+    }
     if (immediateReason) {
         requestRecentBetList(immediateReason);
     }
@@ -1131,6 +1297,11 @@ function startRecentBetListSettlementPolling(immediateReason) {
         ticks++;
         if (ticks > PB_RECENT_POLL_MAX_TICKS) {
             stopRecentBetListSettlementPolling();
+            return;
+        }
+        if (!lionPollSettlementEnabled()) {
+            stopRecentBetListSettlementPolling();
+            lionPollLogSkip("settlement_poll_tick");
             return;
         }
         if (Date.now() < m_pbRecentBetsPollBackoffUntil) return;
@@ -1166,6 +1337,11 @@ function updateSeniorCurBetDisplays(arrBetData) {
 function requestRecentBetList(reason, onDone) {
     var gid = getGameId();
     if (gid < 0) {
+        if (typeof onDone === "function") onDone();
+        return;
+    }
+    if (reason === "poll_settlement" && !lionPollSettlementEnabled()) {
+        lionPollLogSkip("pbrecentbets poll_settlement");
         if (typeof onDone === "function") onDone();
         return;
     }
@@ -1207,7 +1383,6 @@ function requestRecentBetList(reason, onDone) {
         success: function(jResult) {
             if (jResult.status === "success") {
                 var bets = jResult.bets || [];
-                fillSeniorBetListTable(bets);
                 if (m_pbRecentBetsPollTimer) {
                     var hasWait = false;
                     var curNo = m_objRound && m_objRound.round_no != null ? String(m_objRound.round_no) : "";
@@ -1221,6 +1396,8 @@ function requestRecentBetList(reason, onDone) {
                     }
                     if (!hasWait) stopRecentBetListSettlementPolling();
                 }
+                // 목록/카드 DOM 갱신은 다음 틱으로 — API 응답 콜백이 클릭을 가로채지 않게
+                scheduleFillSeniorBetListTable(bets);
             } else if (jResult.status === "logout") {
                 location.reload();
             }
@@ -1232,6 +1409,42 @@ function requestRecentBetList(reason, onDone) {
             if (typeof onDone === "function") onDone();
         }
     });
+}
+
+/** pbrecentbets 응답으로 목록 DOM을 바로 갈아엎지 않고, 클릭 핸들러에 메인스레드를 양보 */
+var m_seniorBetListRenderGen = 0;
+var m_seniorBetListSig = "";
+
+function betListRenderSignature(arr) {
+    var raw = arr != null ? arr : [];
+    var s = String(raw.length);
+    for (var i = 0; i < raw.length; i++) {
+        var e = raw[i];
+        s += "|" + (e.bet_fid != null ? e.bet_fid : "")
+            + ":" + (e.bet_state != null ? e.bet_state : "")
+            + ":" + (e.bet_money != null ? e.bet_money : "")
+            + ":" + (e.bet_win_money != null ? e.bet_win_money : "")
+            + ":" + (e.bet_round_fid != null ? e.bet_round_fid : "");
+    }
+    s += "|w" + (m_betListWinsOnly ? 1 : 0);
+    s += "|r" + (m_objRound && m_objRound.round_no != null ? String(m_objRound.round_no) : "");
+    s += "|f" + (m_objRound && m_objRound.round_id != null ? String(m_objRound.round_id) : "");
+    s += "|lock" + (m_btnBet && m_btnBet.disabled ? 1 : 0);
+    return s;
+}
+
+function scheduleFillSeniorBetListTable(arrBetData) {
+    var snapshot = arrBetData != null ? arrBetData : [];
+    var sig = betListRenderSignature(snapshot);
+    if (sig === m_seniorBetListSig) {
+        return;
+    }
+    var gen = ++m_seniorBetListRenderGen;
+    setTimeout(function() {
+        if (gen !== m_seniorBetListRenderGen) return;
+        fillSeniorBetListTable(snapshot);
+        m_seniorBetListSig = betListRenderSignature(snapshot);
+    }, 0);
 }
 
 function fillSeniorBetListTable(arrBetData) {
@@ -1483,6 +1696,8 @@ function doBet() {
     }
     if (m_betSubmitBusy) return;
     m_betSubmitBusy = true;
+    // 줄 선 읽기 폴링 제거 — 배팅 XHR 이 게이트/큐에 안 묶이도록 (배팅 자체는 게이트 bypass)
+    lionApiPurgeQueuedBackground();
 
     var objData = {
         "game": getGameId(),
@@ -1494,8 +1709,10 @@ function doBet() {
     $("#bet-btn-id").addClass("is-loading");
 
     var jsonData = JSON.stringify(objData);
+    var betStallTimer = null;
+    var betTimedOut = false;
 
-    $.ajax({
+    var betXhr = $.ajax({
         url: '/api/betting' + location.search,
         data: { json_: jsonData },
         type: 'post',
@@ -1538,10 +1755,26 @@ function doBet() {
         error: function(request, status, error) {
             $("#bet-btn-id").removeClass("is-loading");
             m_betSubmitBusy = false;
-            // console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+            // 자동 재시도 없음 — 서버에서 이미 접수됐을 수 있음
+            if (betTimedOut) {
+                showMessageBox(1, "응답이 지연됩니다. 배팅리스트·보유머니를 확인한 뒤 다시 시도하세요.");
+            }
+        },
+        complete: function() {
+            if (betStallTimer) {
+                clearTimeout(betStallTimer);
+                betStallTimer = null;
+            }
         }
-
     });
+
+    betStallTimer = setTimeout(function() {
+        betStallTimer = null;
+        betTimedOut = true;
+        try {
+            if (betXhr && typeof betXhr.abort === "function") betXhr.abort();
+        } catch (e) { /* ignore */ }
+    }, LION_BET_STALL_MS);
 
 }
 
@@ -1650,6 +1883,10 @@ function stopSessionHeartbeat() {
 
 function requestSessionHeartbeat() {
     if (!hasSessionLogId()) return;
+    if (!lionPollHeartbeatEnabled()) {
+        lionPollLogSkip("heartbeat");
+        return;
+    }
     if (m_heartbeatReqBusy) return;
     if (isHeavyApiBusy() || isBgSessionPollBusy()) return;
     m_heartbeatReqBusy = true;
@@ -1750,9 +1987,17 @@ function requestConfig() {
 }
 
 function scheduleRequestCurrentRound(delayMs) {
+    if (!lionPollRoundEnabled()) {
+        lionPollLogSkip("pbcurrentgame_schedule");
+        return;
+    }
     if (m_scheduleCurrentRoundTimer) return;
     m_scheduleCurrentRoundTimer = setTimeout(function() {
         m_scheduleCurrentRoundTimer = null;
+        if (!lionPollRoundEnabled()) {
+            lionPollLogSkip("pbcurrentgame_schedule_fire");
+            return;
+        }
         requestCurrentRound();
     }, delayMs);
 }
@@ -2410,15 +2655,23 @@ function showTime() {
     }
 
     let nCurSec = tmCurrent.getSeconds();
-    // 8초마다 잔액/메시지 중 1개만 (회차 API와 겹치면 스킵)
+    // 8초마다 잔액/메시지 중 1개만 (회차 API와 겹치면 스킵) — A/B 킬스위치 적용
     if (nCurSec % 8 == 0) {
         if (!isAnySiteApiBusy()) {
             m_bgPollPhase++;
             // 3틱 중 2회 잔액, 1회 메시지 (~24초마다 메시지)
             if (m_bgPollPhase % 3 === 0) {
-                requestRecvMessage();
+                if (lionPollMessageEnabled()) {
+                    requestRecvMessage();
+                } else {
+                    lionPollLogSkip("message");
+                }
             } else {
-                requestAmountInfo();
+                if (lionPollAssetsEnabled()) {
+                    requestAmountInfo();
+                } else {
+                    lionPollLogSkip("assets");
+                }
             }
         }
     }
@@ -3770,17 +4023,19 @@ function speak(text, opt_prop) {
         //alert("이 브라우저는 음성 합성을 지원하지 않습니다.");
         return;
     }
-
-    window.speechSynthesis.cancel(); // 현재 읽고있다면 초기화
-
-    const prop = opt_prop; // {}
-
-    const speechMsg = new SpeechSynthesisUtterance();
-    speechMsg.rate = prop.rate; // 1 // 속도: 0.1 ~ 10      
-    speechMsg.pitch = prop.pitch; // 1 // 음높이: 0 ~ 2
-    speechMsg.lang = "ko-KR"; //prop.lang ;// "ko-KR"
-    speechMsg.text = text;
-
-    // SpeechSynthesisUtterance에 저장된 내용을 바탕으로 음성합성 실행
-    window.speechSynthesis.speak(speechMsg);
+    // TTS(cancel/speak)가 클릭 핸들러를 동기 차단하지 않도록 다음 틱으로 미룸
+    var prop = opt_prop || {};
+    var msg = text;
+    setTimeout(function() {
+        try {
+            if (typeof window.speechSynthesis === "undefined") return;
+            window.speechSynthesis.cancel();
+            var speechMsg = new SpeechSynthesisUtterance();
+            speechMsg.rate = prop.rate;
+            speechMsg.pitch = prop.pitch;
+            speechMsg.lang = "ko-KR";
+            speechMsg.text = msg;
+            window.speechSynthesis.speak(speechMsg);
+        } catch (e) { /* TTS 실패는 UI에 영향 없게 */ }
+    }, 0);
 }
