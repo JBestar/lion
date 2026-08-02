@@ -37,6 +37,11 @@ var m_betListWinsOnly = false;
 /** sess_list 유지 heartbeat (60초) */
 var m_sessHeartbeatTimer = null;
 var SESS_HEARTBEAT_MS = 60000;
+/** assets / 쪽지 번갈아 폴링 (동시 요청·같은 초 중복 방지) */
+var m_assetsReqBusy = false;
+var m_recvMsgReqBusy = false;
+var m_bgPollPhase = 0;
+var m_lastBgPollSec = -1;
 
 $(document).ready(function() {
 
@@ -57,7 +62,8 @@ $(document).ready(function() {
     startSessionHeartbeat();
     requestConfig();
     requestCurrentRound();
-    requestRecvMessage();
+    // assets와 동시에 나가지 않도록 쪽지는 짧게 지연
+    setTimeout(function() { requestRecvMessage(); }, 500);
     addEventListner();
 
     $(document).on("input", "#bet_money", function() {
@@ -1383,11 +1389,14 @@ function requestSessionHeartbeat() {
 
 function requestMemberInfo() {
 
+    if (m_assetsReqBusy) return;
+    m_assetsReqBusy = true;
 
     $.ajax({
         type: "POST",
         dataType: "json",
         url: "/api/assets" + location.search,
+        timeout: 10000,
         success: function(jResult) {
             //console.log(jResult);
             if (jResult.status == "success") {
@@ -1398,6 +1407,9 @@ function requestMemberInfo() {
         },
         error: function(request, status, error) {
 
+        },
+        complete: function() {
+            m_assetsReqBusy = false;
         }
     });
 
@@ -1405,10 +1417,14 @@ function requestMemberInfo() {
 
 function requestAmountInfo() {
 
+    if (m_assetsReqBusy) return;
+    m_assetsReqBusy = true;
+
     $.ajax({
         type: "POST",
         dataType: "json",
         url: "/api/assets" + location.search,
+        timeout: 10000,
         success: function(jResult) {
             //console.log(jResult);
             if (jResult.status == "success") {
@@ -1419,6 +1435,9 @@ function requestAmountInfo() {
         },
         error: function(request, status, error) {
 
+        },
+        complete: function() {
+            m_assetsReqBusy = false;
         }
     });
 
@@ -1915,10 +1934,14 @@ function requestSendMessages() {
 
 function requestRecvMessage() {
 
+    if (m_recvMsgReqBusy) return;
+    m_recvMsgReqBusy = true;
+
     $.ajax({
         type: "POST",
         dataType: "json",
         url: "/api/getRecvNewMessage" + location.search,
+        timeout: 10000,
         success: function(jResult) {
             if (jResult.status == "success") {
                 showNewMessage(jResult.data);
@@ -1928,6 +1951,9 @@ function requestRecvMessage() {
         },
         error: function(request, status, error) {
 
+        },
+        complete: function() {
+            m_recvMsgReqBusy = false;
         }
     });
 
@@ -2069,9 +2095,15 @@ function showTime() {
     }
 
     let nCurSec = tmCurrent.getSeconds();
-    if (nCurSec % 4 == 0) {
-        requestAmountInfo();
-        requestRecvMessage();
+    // 4초마다 잔액/쪽지 중 1개만 (같은 초 중복 틱 방지)
+    if (nCurSec % 4 == 0 && m_lastBgPollSec !== nCurSec) {
+        m_lastBgPollSec = nCurSec;
+        m_bgPollPhase++;
+        if (m_bgPollPhase % 2 === 0) {
+            requestRecvMessage();
+        } else {
+            requestAmountInfo();
+        }
     }
 
     m_objRound.round_current = parseInt(m_objRound.round_current) + tmCurrent.getTime() - m_tmClientTime;
